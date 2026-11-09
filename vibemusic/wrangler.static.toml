@@ -1,0 +1,17 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Deploy ONLY the static frontend as a Worker (Workers static assets).
+# Cloudflare's recommended path for new projects in 2026.
+#
+#   npm run build                       # emits out/
+#   npx wrangler deploy -c wrangler.static.toml
+#
+# public/_redirects ships inside out/, and Workers static assets honour
+# _redirects / _headers natively — so /@handle, /tip/0x… and /0x… all work.
+#
+# Prefer Cloudflare Pages instead?  npx wrangler pages deploy out --project-name vibemusic
+# ─────────────────────────────────────────────────────────────────────────────
+name = "vibemusic"
+compatibility_date = "2025-06-01"
+
+[assets]
+directory = "./out"

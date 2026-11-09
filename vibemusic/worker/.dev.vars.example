@@ -1,0 +1,6 @@
+# Copy to worker/.dev.vars for local development. NEVER commit the real file.
+#
+# AGENT_PRIVATE_KEY  — wallet that holds $VIBES only (create with: npm run agent:wallet)
+# RELAYER_PRIVATE_KEY — wallet that holds a little ETH and pays all gas
+AGENT_PRIVATE_KEY=0x0000000000000000000000000000000000000000000000000000000000000000
+RELAYER_PRIVATE_KEY=0x0000000000000000000000000000000000000000000000000000000000000000

@@ -1,0 +1,21 @@
+{
+  "name": "vibemusic-agent",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Standalone VibeMusic agent \u2014 discovers Audius tracks, judges them, signs EIP-712 tips and posts them to the relayer. The agent wallet holds $VIBES only: it never needs ETH.",
+  "scripts": {
+    "start": "tsx src/index.ts",
+    "mission": "tsx src/index.ts",
+    "typecheck": "tsc --noEmit",
+    "smoke": "tsx src/smoke.ts"
+  },
+  "dependencies": {
+    "viem": "^2.57.16"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.2",
+    "typescript": "^5.9.3",
+    "@types/node": "^22.10.0"
+  }
+}

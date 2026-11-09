@@ -1,0 +1,134 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: dark;
+    /* Zero-network font stack: no build-time or runtime font downloads, so the
+       app builds offline and loads instantly. Swap in a self-hosted Inter or
+       Geist file if you want a custom display face. */
+    --font-sans: 'Inter', 'InterVariable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto,
+      'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
+    --font-mono: 'JetBrains Mono', 'SFMono-Regular', ui-monospace, Menlo, Consolas, 'Liberation Mono',
+      monospace;
+  }
+
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-ink-950 text-white/90 antialiased;
+    font-feature-settings: 'ss01' 1, 'cv01' 1;
+  }
+
+  ::selection {
+    background: rgba(43, 231, 155, 0.28);
+    color: #fff;
+  }
+
+  /* thin dark scrollbars */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.14) transparent;
+  }
+  *::-webkit-scrollbar {
+    width: 9px;
+    height: 9px;
+  }
+  *::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.13);
+    border-radius: 999px;
+  }
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  input,
+  textarea {
+    @apply outline-none;
+  }
+}
+
+@layer components {
+  .glass {
+    @apply border border-white/[0.06] bg-white/[0.025] backdrop-blur-xl;
+  }
+
+  .glass-strong {
+    @apply border border-white/[0.09] bg-white/[0.05] backdrop-blur-2xl;
+  }
+
+  .card-hover {
+    @apply transition-all duration-300 hover:border-white/[0.14] hover:bg-white/[0.045];
+  }
+
+  .text-gradient {
+    @apply bg-gradient-to-r from-white via-vibe-100 to-aura-300 bg-clip-text text-transparent;
+  }
+
+  .text-gradient-vibe {
+    @apply bg-gradient-to-r from-vibe-300 via-vibe-200 to-aura-300 bg-clip-text text-transparent;
+  }
+
+  .btn-accent {
+    background-image: linear-gradient(100deg, #57f7b6 0%, #2be79b 42%, #7dd3fc 100%);
+    @apply text-ink-950 shadow-[0_10px_40px_-12px_rgba(43,231,155,0.55)];
+  }
+
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-full border border-white/[0.08] bg-white/[0.035] px-2.5 py-1 text-[11px] font-medium text-white/60;
+  }
+
+  .field {
+    @apply w-full rounded-xl border border-white/[0.08] bg-black/40 px-3.5 py-2.5 text-sm text-white/90 placeholder:text-white/25 transition focus:border-vibe-400/60 focus:bg-black/60 focus:ring-4 focus:ring-vibe-400/10;
+  }
+
+  .link-underline {
+    @apply relative after:absolute after:-bottom-0.5 after:left-0 after:h-px after:w-0 after:bg-vibe-300/70 after:transition-all hover:after:w-full;
+  }
+
+  .num {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@layer utilities {
+  /* faint dotted grid used behind the hero */
+  .grid-bg {
+    background-image: radial-gradient(rgba(255, 255, 255, 0.055) 1px, transparent 1px);
+    background-size: 34px 34px;
+    mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, black 20%, transparent 75%);
+  }
+
+  .glow-blob {
+    filter: blur(90px);
+    opacity: 0.55;
+  }
+
+  .shimmer-line {
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.09), transparent);
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .mask-fade-r {
+    mask-image: linear-gradient(to right, black 80%, transparent 100%);
+  }
+}
+
+/* RainbowKit: blend the modal into our palette */
+[data-rk] {
+  --rk-radii-modal: 20px;
+}

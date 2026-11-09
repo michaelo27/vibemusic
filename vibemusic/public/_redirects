@@ -1,0 +1,13 @@
+# Cloudflare Pages routing for the static Next.js export.
+# The export cannot emit dynamic segments, so public jar pages are rewrites
+# into a single client-rendered shell that reads the wallet/handle from the URL.
+
+# /@handle            → artist page
+/@*        /u/index.html     200
+# /tip/0xabc…         → tip jar page
+/tip/*     /tip/index.html   200
+# /0xabc…             → short vanity path for a jar
+/0x*       /tip/index.html   200
+
+# NB: deliberately no catch-all rule — Cloudflare Pages already serves
+# 404.html for unknown paths, and a `/*` rule risks shadowing /_next assets.

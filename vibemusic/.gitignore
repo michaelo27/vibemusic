@@ -1,0 +1,26 @@
+# deps
+node_modules/
+.pnp
+.pnp.js
+
+# next
+.next/
+out/
+next-env.d.ts
+*.tsbuildinfo
+
+# env — never commit real keys
+.env
+.env.local
+.env.*.local
+!.env.example
+.dev.vars
+
+# cloudflare
+.wrangler/
+worker/.wrangler/
+
+# misc
+.DS_Store
+*.log
+npm-debug.log*

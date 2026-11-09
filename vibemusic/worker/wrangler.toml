@@ -1,0 +1,40 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# VibeMusic — single Cloudflare Worker (relayer + agent + API + KV)
+# Free tier friendly: no Durable Objects, no queues, no paid products.
+# ─────────────────────────────────────────────────────────────────────────────
+name = "vibemusic-relayer"
+main = "src/index.ts"
+compatibility_date = "2025-06-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Local dev: `wrangler dev` creates a local KV store automatically.
+# Production: run `npx wrangler kv namespace create VIBES_KV` and paste the id.
+[[kv_namespaces]]
+binding = "VIBES_KV"
+id = "f9467a6a1700449aafd2accddca0f39c"
+
+[vars]
+APP_NAME = "VibeMusic"
+# Public Base RPC (free). Swap for any provider URL if you get rate limited.
+BASE_RPC_URL = "https://base-rpc.publicnode.com"
+# Hard safety rails for the agent.
+MAX_TIP_AMOUNT = "100"        # max whole $VIBES per single agent tip
+MIN_SCORE = "68"              # agent only tips tracks scoring >= this
+MAX_TIPS_PER_MISSION = "2"    # keep CPU + gas per invocation tiny
+DAILY_SPEND_CAP = "500"       # whole $VIBES per agent per UTC day
+# CORS: "*" for the hackathon; set to your Pages URL in production.
+ALLOWED_ORIGINS = "*"
+# Only tip wallets that actually claimed a VibeMusic jar.
+REQUIRE_TIP_JAR = "true"
+
+[observability]
+enabled = true
+
+# ── Optional: let the agent run on its own schedule ──────────────────────────
+# Uncomment, deploy, and the agent cooks every 6 hours without being asked.
+# [triggers]
+# crons = ["0 */6 * * *"]
+
+# ── Secrets (never in this file) ─────────────────────────────────────────────
+# npx wrangler secret put AGENT_PRIVATE_KEY     # agent wallet, holds $VIBES only
+# npx wrangler secret put RELAYER_PRIVATE_KEY   # relayer wallet, holds a little ETH

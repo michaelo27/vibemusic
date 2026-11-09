@@ -1,0 +1,44 @@
+{
+  "name": "vibemusic",
+  "version": "0.1.0",
+  "private": true,
+  "description": "VibeMusic \u2014 tip Audius artists in $VIBES on Base. Humans tip. An autonomous agent tips too.",
+  "scripts": {
+    "dev": "next dev",
+    "dev:worker": "npm --prefix worker run dev",
+    "build": "next build",
+    "preview": "npx --yes serve out -l 4173",
+    "typecheck": "tsc --noEmit && npm --prefix worker run typecheck && npm --prefix agent run typecheck",
+    "agent": "npm --prefix agent run start",
+    "agent:wallet": "node scripts/agent-wallet.mjs",
+    "agent:activate": "node scripts/agent-activate.mjs",
+    "agent:status": "node scripts/agent-status.mjs",
+    "smoke": "npm --prefix agent run smoke",
+    "kv:create": "npm --prefix worker run kv:create",
+    "deploy:api": "npm --prefix worker run deploy",
+    "deploy:web": "cd worker && npx wrangler pages deploy ../out --project-name vibemusic",
+    "deploy:assets": "cd worker && npx wrangler deploy -c ../wrangler.static.toml"
+  },
+  "dependencies": {
+    "@rainbow-me/rainbowkit": "^2.2.11",
+    "@tanstack/react-query": "^5.107.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.475.0",
+    "next": "15.5.29",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "tailwind-merge": "^2.6.0",
+    "viem": "^2.57.16",
+    "wagmi": "^2.19.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.19",
+    "tailwindcss-animate": "^1.0.7",
+    "typescript": "^5.9.3"
+  }
+}

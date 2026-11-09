@@ -1,0 +1,83 @@
+import type { Config } from 'tailwindcss';
+
+const config: Config = {
+  darkMode: 'class',
+  content: ['./src/**/*.{ts,tsx}'],
+  theme: {
+    extend: {
+      colors: {
+        ink: {
+          950: '#05060A',
+          900: '#080A0F',
+          850: '#0B0E14',
+          800: '#10141C',
+          700: '#171C26',
+        },
+        vibe: {
+          50: '#E9FFF6',
+          100: '#C8FFE8',
+          200: '#93FFD3',
+          300: '#57F7B6',
+          400: '#2BE79B',
+          500: '#12CE82',
+          600: '#08A768',
+          700: '#0A8253',
+        },
+        aura: {
+          300: '#C4B5FD',
+          400: '#A78BFA',
+          500: '#8B5CF6',
+          600: '#7C3AED',
+        },
+      },
+      fontFamily: {
+        sans: ['var(--font-sans)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        mono: ['var(--font-mono)', 'ui-monospace', 'SFMono-Regular', 'monospace'],
+      },
+      borderRadius: {
+        '2xl': '1rem',
+        '3xl': '1.5rem',
+        '4xl': '2rem',
+      },
+      boxShadow: {
+        glow: '0 0 0 1px rgba(87,247,182,0.18), 0 18px 60px -18px rgba(43,231,155,0.35)',
+        'glow-aura': '0 0 0 1px rgba(167,139,250,0.18), 0 18px 70px -20px rgba(139,92,246,0.45)',
+        card: '0 1px 0 0 rgba(255,255,255,0.04) inset, 0 24px 60px -32px rgba(0,0,0,0.9)',
+      },
+      keyframes: {
+        'fade-up': {
+          '0%': { opacity: '0', transform: 'translateY(10px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        'fade-in': { '0%': { opacity: '0' }, '100%': { opacity: '1' } },
+        'scale-in': {
+          '0%': { opacity: '0', transform: 'scale(0.96)' },
+          '100%': { opacity: '1', transform: 'scale(1)' },
+        },
+        shimmer: { '100%': { transform: 'translateX(100%)' } },
+        'pulse-ring': {
+          '0%': { transform: 'scale(0.9)', opacity: '0.7' },
+          '70%': { transform: 'scale(1.4)', opacity: '0' },
+          '100%': { transform: 'scale(1.4)', opacity: '0' },
+        },
+        float: {
+          '0%,100%': { transform: 'translateY(0)' },
+          '50%': { transform: 'translateY(-6px)' },
+        },
+        marquee: { '0%': { transform: 'translateX(0)' }, '100%': { transform: 'translateX(-50%)' } },
+      },
+      animation: {
+        'fade-up': 'fade-up 0.5s cubic-bezier(0.22,1,0.36,1) both',
+        'fade-in': 'fade-in 0.4s ease-out both',
+        'scale-in': 'scale-in 0.25s cubic-bezier(0.22,1,0.36,1) both',
+        shimmer: 'shimmer 2s infinite',
+        'pulse-ring': 'pulse-ring 2s cubic-bezier(0.22,1,0.36,1) infinite',
+        float: 'float 6s ease-in-out infinite',
+        marquee: 'marquee 40s linear infinite',
+      },
+    },
+  },
+  plugins: [require('tailwindcss-animate')],
+};
+
+export default config;

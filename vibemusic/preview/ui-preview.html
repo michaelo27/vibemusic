@@ -1,0 +1,1493 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>VibeMusic — interactive prototype</title>
+<style>
+/* ── design tokens ───────────────────────────────────────────────────────── */
+:root{
+  color-scheme:light;
+  --bg:#ffffff; --bg-2:#f6f7f9; --bg-3:#f1f2f5;
+  --surface:#ffffff; --line:#e7e9ee; --line-2:#d6dae1;
+  --text:#0d1014; --muted:#5b6472; --faint:#8a929d;
+  --accent:#4f46e5; --accent-ink:#ffffff; --accent-soft:#eef0fe; --accent-line:#d8dbfb;
+  --good:#047857; --good-soft:#e8f6ef;
+  --warn:#9a5b06; --warn-soft:#fdf4e5;
+  --radius:16px; --radius-sm:10px;
+  --shadow:0 1px 2px rgba(13,16,20,.04),0 12px 32px -18px rgba(13,16,20,.25);
+  --mono:ui-monospace,SFMono-Regular,Menlo,"Roboto Mono",monospace;
+}
+html[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#0a0b0d; --bg-2:#101216; --bg-3:#15181e;
+  --surface:#111318; --line:#23262e; --line-2:#31353f;
+  --text:#f2f4f7; --muted:#a1a9b5; --faint:#6e7681;
+  --accent:#9188ff; --accent-ink:#12111c; --accent-soft:#1a1927; --accent-line:#2d2b47;
+  --good:#42d6a3; --good-soft:#0f231c;
+  --warn:#eab464; --warn-soft:#241c10;
+  --shadow:0 1px 2px rgba(0,0,0,.5),0 16px 40px -20px rgba(0,0,0,.8);
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{
+  background:var(--bg);color:var(--text);
+  font-family:ui-sans-serif,-apple-system,"Segoe UI",Roboto,Inter,system-ui,sans-serif;
+  font-size:14px;line-height:1.55;-webkit-font-smoothing:antialiased;
+  transition:background .18s ease,color .18s ease;
+}
+a{color:inherit;text-decoration:none}
+button{font:inherit;color:inherit}
+h1,h2,h3,h4,p,ul,ol{margin:0}
+.mono{font-family:var(--mono);font-size:.92em}
+.shell{max-width:1080px;margin:0 auto;padding:0 24px}
+.muted{color:var(--muted)}
+.faint{color:var(--faint)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* ── header ─────────────────────────────────────────────────────────────── */
+.hdr{position:sticky;top:0;z-index:40;background:var(--bg);border-bottom:1px solid var(--line)}
+.hdr.blur{background:color-mix(in srgb,var(--bg) 86%,transparent);backdrop-filter:blur(14px)}
+.hrow{display:flex;align-items:center;gap:14px;height:64px}
+.brand{display:flex;align-items:center;gap:9px;font-weight:660;font-size:15.5px;letter-spacing:-.015em}
+.brand .mark{width:26px;height:26px;border-radius:8px;background:var(--accent);display:grid;place-items:center;color:var(--accent-ink);font-size:13px;flex:none}
+.badge{font-size:11px;color:var(--faint);border:1px solid var(--line);border-radius:999px;padding:2px 9px;white-space:nowrap}
+.nav{display:flex;gap:2px;margin-left:10px;min-width:0;overflow-x:auto;scrollbar-width:none}
+.nav::-webkit-scrollbar{display:none}
+.lbl-min{display:none}
+.nav a{padding:7px 12px;border-radius:9px;font-size:13.5px;color:var(--muted);font-weight:520}
+.nav a:hover{color:var(--text);background:var(--bg-2)}
+.nav a.on{color:var(--text);background:var(--bg-2)}
+.hright{margin-left:auto;display:flex;align-items:center;gap:8px}
+.iconbtn{width:34px;height:34px;border-radius:9px;border:1px solid var(--line);background:var(--surface);color:var(--muted);display:grid;place-items:center;cursor:pointer;font-size:14px;line-height:1}
+.iconbtn:hover{color:var(--text);border-color:var(--line-2)}
+.balchip{font-size:12px;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:3px 10px;white-space:nowrap;font-variant-numeric:tabular-nums}
+@media(max-width:680px){
+  /* the wordmark got longer, so the nav drops to its own row instead of scrolling off-screen */
+  .badge{display:none}
+  .hrow{flex-wrap:wrap;height:auto;padding:9px 0 8px;row-gap:8px;gap:8px}
+  .brand{order:1;font-size:14.5px;gap:7px}
+  .brand .mark{width:24px;height:24px}
+  .hright{order:2;gap:6px}
+  .nav{order:3;width:100%;margin:0;gap:2px;overflow:visible;padding:3px;
+    background:var(--bg-2);border:1px solid var(--line);border-radius:11px}
+  .nav a{flex:1;text-align:center;padding:7px 0;font-size:12.8px;border-radius:8px}
+  .nav a.on{background:var(--surface);box-shadow:0 1px 2px rgba(13,16,20,.07)}
+  .balchip{display:none}
+  .lbl-full{display:none}
+  .lbl-min{display:inline}
+}
+
+/* ── primitives ─────────────────────────────────────────────────────────── */
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  height:40px;padding:0 16px;border-radius:var(--radius-sm);
+  border:1px solid var(--line-2);background:var(--surface);color:var(--text);
+  font-size:14px;font-weight:550;cursor:pointer;white-space:nowrap;
+  transition:background .14s,border-color .14s,filter .14s;
+}
+.btn:hover{background:var(--bg-2)}
+.btn.primary{background:var(--accent);border-color:transparent;color:var(--accent-ink)}
+.btn.primary:hover{filter:brightness(1.07);background:var(--accent)}
+.btn.ghost{border-color:transparent;background:transparent;color:var(--muted)}
+.btn.ghost:hover{background:var(--bg-2);color:var(--text)}
+.btn.sm{height:32px;padding:0 12px;font-size:12.5px;border-radius:9px}
+.btn.lg{height:46px;font-size:15px;border-radius:12px}
+.btn.full{width:100%}
+.btn[disabled]{opacity:.45;pointer-events:none}
+.btn .dot{width:6px;height:6px;border-radius:50%;background:var(--good);flex:none}
+
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:22px}
+.card.tight{padding:0}
+.stack>*+*{margin-top:16px}
+.i{
+  width:100%;height:42px;border-radius:var(--radius-sm);border:1px solid var(--line-2);
+  background:var(--surface);color:var(--text);padding:0 13px;font-size:14px;outline:none;
+  transition:border-color .14s,box-shadow .14s;
+}
+.i::placeholder{color:var(--faint)}
+.i:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+textarea.i{height:auto;min-height:86px;padding:11px 13px;resize:vertical;line-height:1.55;font-family:inherit}
+.label{display:flex;justify-content:space-between;align-items:baseline;font-size:12.5px;font-weight:550;color:var(--muted);margin-bottom:6px}
+.label span{font-weight:400;color:var(--faint);font-size:11.5px}
+.field+.field{margin-top:14px}
+.divider{height:1px;background:var(--line);border:0;margin:20px 0}
+.chip{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:2px 9px;white-space:nowrap}
+.chip.good{color:var(--good);border-color:transparent;background:var(--good-soft)}
+.chip.accent{color:var(--accent);border-color:var(--accent-line);background:var(--accent-soft)}
+.dotg{width:5px;height:5px;border-radius:50%;background:var(--good);display:inline-block}
+.empty{padding:26px 20px;text-align:center;color:var(--faint);font-size:13px;line-height:1.6}
+.empty b{display:block;color:var(--muted);font-weight:560;margin-bottom:4px;font-size:13.5px}
+
+/* ── hero / sections ────────────────────────────────────────────────────── */
+.hero{padding:76px 0 40px;max-width:740px}
+.eyebrow{font-size:11.5px;font-weight:600;letter-spacing:.075em;text-transform:uppercase;color:var(--faint);margin-bottom:16px}
+h1{font-size:clamp(30px,4.3vw,46px);line-height:1.06;letter-spacing:-.03em;font-weight:670}
+.lede{font-size:16.5px;color:var(--muted);max-width:62ch;margin-top:18px}
+.cta{display:flex;gap:10px;flex-wrap:wrap;margin-top:28px}
+.facts{display:flex;gap:20px;flex-wrap:wrap;list-style:none;padding:0;margin-top:28px;font-size:12.5px;color:var(--faint)}
+.facts li{display:flex;align-items:center;gap:7px}
+.facts li::before{content:"";width:5px;height:5px;border-radius:50%;background:var(--good);flex:none}
+
+.stats{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin-bottom:64px}
+.stat{padding:24px 0}
+.stat+.stat{border-left:1px solid var(--line);padding-left:26px}
+.stat b{display:block;font-size:24px;font-weight:640;letter-spacing:-.025em;font-variant-numeric:tabular-nums}
+.stat span{font-size:12.5px;color:var(--faint)}
+@media(max-width:720px){
+  .stats{grid-template-columns:repeat(2,1fr)}
+  .stat:nth-child(odd){border-left:0;padding-left:0}
+  .stat:nth-child(n+3){border-top:1px solid var(--line)}
+}
+
+.block{margin-bottom:64px}
+.block:last-child{margin-bottom:40px}
+.bhead{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:18px}
+.bhead h2{font-size:20px;font-weight:640;letter-spacing:-.02em}
+.bhead p{color:var(--muted);font-size:13.5px;max-width:62ch;margin-top:5px}
+.bhead .side{display:flex;gap:8px;align-items:center}
+
+/* ── mission runner ─────────────────────────────────────────────────────── */
+.runrow{display:flex;gap:10px}
+.runrow .i{flex:1;min-width:0}
+.presets{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.preset{font-size:12.5px;padding:6px 12px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--muted);cursor:pointer;transition:.14s}
+.preset:hover{border-color:var(--line-2);color:var(--text)}
+.preset.on{border-color:var(--accent-line);background:var(--accent-soft);color:var(--accent)}
+.steps{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;list-style:none;padding:0;margin-top:22px}
+.step{display:flex;flex-direction:column;gap:8px;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--bg-2);transition:.16s}
+.sdot{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:11px;font-weight:600;border:1px solid var(--line-2);color:var(--faint);background:var(--surface)}
+.sl{font-size:12px;font-weight:540;color:var(--muted)}
+.step.active{border-color:var(--accent-line);background:var(--accent-soft)}
+.step.active .sdot{border-color:transparent;background:var(--accent);color:var(--accent-ink)}
+.step.active .sl{color:var(--accent)}
+.step.done .sdot{border-color:transparent;background:var(--good-soft);color:var(--good)}
+.step.done .sl{color:var(--text)}
+@media(max-width:660px){
+  .steps{grid-template-columns:repeat(2,1fr)}
+  .step:nth-child(5){grid-column:1/-1;flex-direction:row;align-items:center}
+  .runrow{flex-direction:column}
+}
+.phasehint{margin-top:14px;font-size:12.5px;color:var(--faint);min-height:19px}
+#receipts{margin-top:6px}
+.receipt{padding:14px 0;border-top:1px solid var(--line)}
+.receipt:first-child{border-top:0;padding-top:6px}
+.rrow{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.rtitle{font-size:13.5px;font-weight:560}
+.rhandle{color:var(--faint);font-weight:400;font-size:12.5px;margin-left:8px}
+.amt{font-family:var(--mono);font-size:13px;font-weight:600;color:var(--good);white-space:nowrap}
+.why{margin-top:4px;font-size:12.5px;color:var(--muted);line-height:1.55}
+
+/* ── landing hero + animated pass ──────────────────────────────────────── */
+.hero2{text-align:center;padding:46px 0 26px}
+.hero2 h1{max-width:23ch;margin:0 auto;font-size:clamp(31px,4.6vw,50px);text-wrap:balance}
+.hero2 .lede{margin:18px auto 0;max-width:60ch;font-size:15.8px}
+.hero2 .cta{justify-content:center;margin-top:26px}
+.hero2 .facts{margin-top:46px}
+.stagewrap{position:relative;margin-top:38px;display:flex;flex-direction:column;align-items:center;overflow:clip}
+.stage{position:relative;width:min(404px,82vw);perspective:1500px;isolation:isolate}
+.stage::before{content:"";position:absolute;inset:-14% -24% -20%;z-index:-1;filter:blur(16px);
+  background:radial-gradient(58% 52% at 50% 46%,rgba(99,91,255,.19),transparent 72%)}
+html[data-theme="dark"] .stage::before{background:radial-gradient(58% 52% at 50% 46%,rgba(145,136,255,.3),transparent 72%)}
+.pass-wrap{animation:floaty 9s ease-in-out infinite;transform-style:preserve-3d}
+@keyframes floaty{0%,100%{transform:translate3d(0,-7px,0) rotate(-1.4deg)}50%{transform:translate3d(0,9px,0) rotate(1.4deg)}}
+.pass{display:block;position:relative;aspect-ratio:360/486;border-radius:30px;overflow:hidden;color:#f3f4f7;text-decoration:none;
+  background:radial-gradient(130% 90% at 50% -10%,#1b1e26 0%,#0c0e12 52%,#07080a 100%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.09),inset 0 0 0 1px rgba(255,255,255,.06),0 44px 70px -34px rgba(15,18,30,.5);
+  transform:rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg));
+  transition:transform .16s ease-out;will-change:transform}
+.pass:focus-visible{outline:2px solid var(--accent);outline-offset:6px}
+.pass::before{content:"";position:absolute;inset:0;pointer-events:none;opacity:.55;
+  background:linear-gradient(rgba(255,255,255,.05) 1px,transparent 1px) 0 12px/100% 27px,
+             linear-gradient(90deg,rgba(255,255,255,.05) 1px,transparent 1px) 0 0/27px 100%;
+  -webkit-mask-image:radial-gradient(118% 82% at 50% 12%,#000 20%,transparent 74%);
+  mask-image:radial-gradient(118% 82% at 50% 12%,#000 20%,transparent 74%)}
+.pass::after{content:"";position:absolute;inset:-30%;pointer-events:none;mix-blend-mode:screen;
+  background:radial-gradient(circle at var(--mx,50%) var(--my,50%),rgba(255,255,255,.2),rgba(255,255,255,0) 46%)}
+.pass-in{position:relative;z-index:2;height:100%;padding:20px 22px 18px;display:flex;flex-direction:column}
+.pass-notch{width:64px;height:8px;border-radius:99px;margin:0 auto 18px;background:rgba(255,255,255,.1);
+  box-shadow:inset 0 1px 2px rgba(0,0,0,.75),0 1px 0 rgba(255,255,255,.07)}
+.pass-top{display:flex;justify-content:space-between;font-size:9.5px;letter-spacing:.17em;
+  color:rgba(255,255,255,.48);text-transform:uppercase}
+.pass-sigil{position:absolute;top:54px;left:50%;transform:translateX(-44%);width:260px;color:rgba(255,255,255,.15);pointer-events:none}
+.pass-brand{position:relative;margin:30px 0 0;font-size:clamp(34px,8.6vw,45px);font-weight:700;letter-spacing:-.045em;line-height:.92;
+  background:linear-gradient(180deg,#fff 6%,#cfccff 58%,#8f88ff 100%);
+  -webkit-background-clip:text;background-clip:text;color:transparent}
+.pass-id{display:flex;align-items:center;gap:14px;margin-top:32px;min-width:0}
+.pass-name{font-size:20px;font-weight:640;letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pass-meta{display:flex;align-items:center;gap:8px;margin-top:7px;font-size:10.5px;
+  color:rgba(255,255,255,.45);min-width:0}
+.pass-meta em{font-style:normal;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pass-meta .pill{font-size:8.5px;letter-spacing:.13em;text-transform:uppercase;border:1px solid rgba(255,255,255,.24);
+  border-radius:99px;padding:2px 8px;color:#fff;flex:none}
+.pass-medal{position:relative;width:54px;height:54px;border-radius:50%;flex:none;margin-left:auto;display:grid;place-items:center}
+.pass-medal::before{content:"";position:absolute;inset:0;border-radius:50%;opacity:.85;
+  background:conic-gradient(from 0deg,#8f88ff,#42d6a3,#ffd479,#ff9ec7,#8f88ff);animation:spin 9s linear infinite}
+.pass-medal::after{content:"";position:absolute;inset:3px;border-radius:50%;background:#0b0d11}
+.pass-medal span{position:relative;z-index:2;font-size:12.5px;font-weight:700;letter-spacing:.04em}
+@keyframes spin{to{transform:rotate(360deg)}}
+.pass-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:30px;padding-top:17px;
+  border-top:1px solid rgba(255,255,255,.09)}
+.pass-grid .k{font-size:8.5px;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.38)}
+.pass-grid .v{font-size:12px;font-weight:560;margin-top:5px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pass-grid .v.ok{color:#5ce0b0}
+.pass-wave{display:flex;align-items:flex-end;gap:3px;height:38px;margin-top:26px;opacity:.9}
+.pass-wave i{display:block;width:3px;border-radius:2px;height:var(--h,10px);transform-origin:bottom;
+  background:linear-gradient(180deg,#a49dff,#42d6a3);animation:pump 1.7s ease-in-out infinite alternate}
+@keyframes pump{from{transform:scaleY(.55)}to{transform:scaleY(1)}}
+.pass-last{display:flex;justify-content:space-between;align-items:baseline;margin-top:13px;font-size:10.5px;
+  letter-spacing:.04em;color:rgba(255,255,255,.42)}
+.pass-last b{color:#fff;font-weight:560}
+.pass-stub{margin-top:auto;padding-top:15px;border-top:1px dashed rgba(255,255,255,.16)}
+.pass-bars{display:flex;align-items:flex-end;gap:2px;height:44px}
+.pass-bars i{display:block;background:#fff;height:100%;border-radius:.5px;opacity:.92}
+.pass-stubrow{display:flex;justify-content:space-between;margin-top:9px;font-size:9px;letter-spacing:.15em;
+  color:rgba(255,255,255,.45);text-transform:uppercase}
+.pass-shadow{position:absolute;left:50%;bottom:-24px;width:74%;height:22px;transform:translateX(-50%);
+  background:radial-gradient(closest-side,rgba(12,15,25,.3),transparent);filter:blur(5px);z-index:-1}
+html[data-theme="dark"] .pass-shadow{background:radial-gradient(closest-side,rgba(0,0,0,.75),transparent)}
+.only-desktop{display:none}
+@media(min-width:721px){.only-desktop{display:inline}}
+.stage-hint{margin-top:30px;font-size:12.5px;color:var(--faint);text-align:center}
+.stage-hint a{color:var(--muted);text-decoration:underline;text-underline-offset:3px}
+.stage-hint a:hover{color:var(--text)}
+@media (prefers-reduced-motion:reduce){
+  .pass-wrap{animation:none}.pass-medal::before{animation:none}.pass{transition:none}
+}
+
+/* ── jar cards ──────────────────────────────────────────────────────────── */
+.jgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(255px,1fr));gap:14px}
+.jcard{display:block;border:1px solid var(--line);border-radius:14px;padding:18px;background:var(--surface);transition:.16s}
+.jcard:hover{border-color:var(--line-2);transform:translateY(-1px);box-shadow:var(--shadow)}
+.jtop{display:flex;align-items:center;gap:12px;min-width:0}
+.av{width:44px;height:44px;border-radius:50%;flex:none;background-size:cover;background-position:center;box-shadow:inset 0 0 0 1px rgba(0,0,0,.06)}
+.jname{font-size:14px;font-weight:600;letter-spacing:-.01em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.jhandle{font-size:12.5px;color:var(--faint)}
+.jbio{margin-top:13px;font-size:12.8px;color:var(--muted);line-height:1.55;min-height:40px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.jfoot{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:14px;padding-top:13px;border-top:1px solid var(--line);font-size:12px;color:var(--faint)}
+.jfoot .sum{color:var(--text);font-weight:550;font-variant-numeric:tabular-nums}
+
+/* ── jar page ───────────────────────────────────────────────────────────── */
+.back{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);margin:28px 0 22px}
+.back:hover{color:var(--text)}
+.profile{display:flex;align-items:center;gap:18px;margin-bottom:28px;flex-wrap:wrap}
+.profile .av{width:70px;height:70px}
+.profile h1{font-size:26px;letter-spacing:-.025em}
+.pmeta{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px;font-size:12.5px;color:var(--faint)}
+.jcols{display:grid;grid-template-columns:1.5fr 1fr;gap:16px;align-items:start}
+.jcols .side{position:sticky;top:84px}
+@media(max-width:880px){.jcols{grid-template-columns:1fr}.jcols .side{position:static;order:-1}}
+.amounts{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:16px}
+.amounts+.field{margin-top:16px}
+.amtbtn{height:40px;border-radius:var(--radius-sm);border:1px solid var(--line);background:var(--surface);font-size:13.5px;font-weight:560;cursor:pointer;transition:.14s;font-variant-numeric:tabular-nums}
+.amtbtn:hover{border-color:var(--line-2)}
+.amtbtn.on{border-color:var(--accent);background:var(--accent-soft);color:var(--accent)}
+.tipstate{margin-top:12px;font-size:12.5px;color:var(--faint);min-height:18px;line-height:1.5}
+.tipstate.ok{color:var(--good)}
+.tipstate.busy{color:var(--accent)}
+.tnote{margin-top:14px;font-size:11.5px;color:var(--faint);line-height:1.6}
+.trow{display:flex;align-items:center;gap:12px;padding:13px 0;border-top:1px solid var(--line)}
+.trow:first-child{border-top:0;padding-top:2px}
+.tart{width:38px;height:38px;border-radius:9px;flex:none;background-size:cover;background-position:center}
+.tmain{min-width:0;flex:1}
+.ttitle{font-size:13.5px;font-weight:540;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tsub{font-size:11.5px;color:var(--faint);display:flex;gap:8px;margin-top:2px}
+.hrow2{display:flex;gap:11px;padding:13px 0;border-top:1px solid var(--line)}
+.hrow2:first-child{border-top:0;padding-top:2px}
+.hav{width:28px;height:28px;border-radius:50%;flex:none;background-size:cover;background-position:center;box-shadow:inset 0 0 0 1px rgba(0,0,0,.06)}
+.hmain{min-width:0;flex:1}
+.hline{display:flex;justify-content:space-between;gap:10px;align-items:baseline}
+.hwho{font-size:13px;font-weight:540}
+.hmsg{font-size:12.5px;color:var(--muted);margin-top:3px;line-height:1.5}
+.hwhy{font-size:11.8px;color:var(--faint);margin-top:3px;line-height:1.5}
+
+/* ── agent console ──────────────────────────────────────────────────────── */
+.trio{display:grid;grid-template-columns:repeat(3,1fr);padding:0;overflow:hidden}
+.trio>div{padding:20px 22px;min-width:0}
+.trio>div+div{border-left:1px solid var(--line)}
+.trio .k{font-size:12px;color:var(--faint);display:flex;align-items:center;gap:6px}
+.trio .v{font-size:18px;font-weight:640;letter-spacing:-.02em;margin-top:9px;font-variant-numeric:tabular-nums}
+.trio .s{font-size:12px;color:var(--muted);margin-top:5px;line-height:1.5}
+@media(max-width:780px){.trio{grid-template-columns:1fr}.trio>div+div{border-left:0;border-top:1px solid var(--line)}}
+.twocol{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
+@media(max-width:880px){.twocol{grid-template-columns:1fr}}
+.mrow{padding:14px 0;border-top:1px solid var(--line);cursor:pointer}
+.mrow:first-child{border-top:0;padding-top:2px}
+.mrow .p{font-size:13.5px;font-weight:550}
+.mrow .mm{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--faint);margin-top:5px}
+.mrow .mm b{color:var(--good);font-weight:600}
+.steps-in{margin-top:11px;padding:12px 13px;border-radius:10px;background:var(--bg-2);display:grid;gap:7px;font-size:12px;color:var(--muted);line-height:1.5}
+.steps-in b{color:var(--accent);font-weight:600;font-family:var(--mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;margin-right:7px}
+.steps-in i{color:var(--faint);font-style:normal}
+.erow{display:flex;gap:11px;padding:11px 0;border-top:1px solid var(--line);align-items:flex-start}
+.erow:first-child{border-top:0;padding-top:2px}
+.eico{width:24px;height:24px;border-radius:7px;border:1px solid var(--line);background:var(--bg-2);display:grid;place-items:center;font-size:10px;color:var(--muted);flex:none}
+.etxt{font-size:12.5px;line-height:1.5;min-width:0;flex:1}
+.edet{font-size:11.5px;color:var(--faint);margin-top:2px}
+.etime{font-size:11px;color:var(--faint);white-space:nowrap;margin-left:6px}
+.howto{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:4px}
+.howto>div{border:1px solid var(--line);border-radius:12px;padding:14px;background:var(--bg-2)}
+.howto .n{font-family:var(--mono);font-size:11px;color:var(--faint)}
+.howto .t{font-size:12.8px;font-weight:600;margin-top:8px}
+.howto .d{font-size:11.5px;color:var(--muted);margin-top:5px;line-height:1.55}
+@media(max-width:780px){.howto{grid-template-columns:1fr 1fr}}
+
+/* ── create ─────────────────────────────────────────────────────────────── */
+.ccols{display:grid;grid-template-columns:1.6fr 1fr;gap:16px;align-items:start}
+.ccols .side{position:sticky;top:84px}
+@media(max-width:900px){.ccols{grid-template-columns:1fr}.ccols .side{position:static;order:2}}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:14px 14px;align-items:start}
+.two>.field{margin-top:0}
+@media(max-width:560px){.two{grid-template-columns:1fr}}
+.stepttl{display:flex;align-items:center;gap:9px;font-size:13.5px;font-weight:600;margin-bottom:16px}
+.stepttl .num{width:22px;height:22px;border-radius:50%;background:var(--bg-3);color:var(--muted);display:grid;place-items:center;font-size:11px;font-weight:600;flex:none}
+.track{display:flex;align-items:center;gap:12px;padding:11px 0;border-top:1px solid var(--line)}
+.track:first-of-type{border-top:0;padding-top:0}
+.sugg{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.sugg button{font-size:12px;padding:6px 11px;border-radius:999px;border:1px dashed var(--line-2);background:transparent;color:var(--muted);cursor:pointer;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sugg button:hover{border-style:solid;color:var(--text)}
+.preview{border:1px solid var(--line);border-radius:14px;padding:18px;background:var(--bg-2)}
+.ptop{display:flex;align-items:center;gap:12px}
+.ptop .av{width:52px;height:52px}
+.pbio{margin-top:13px;font-size:12.5px;color:var(--faint);line-height:1.6;min-height:38px}
+.checks{display:grid;gap:8px;margin-top:16px}
+.check{display:flex;align-items:center;gap:9px;font-size:12.5px;color:var(--faint)}
+.check i{width:16px;height:16px;border-radius:50%;border:1px solid var(--line-2);display:grid;place-items:center;font-size:9px;font-style:normal;color:transparent;flex:none}
+.check.ok{color:var(--text)}
+.check.ok i{background:var(--good-soft);border-color:transparent;color:var(--good)}
+
+/* ── modal / toasts / menu ──────────────────────────────────────────────── */
+.modal-bg{position:fixed;inset:0;z-index:100;background:rgba(9,11,15,.44);backdrop-filter:blur(4px);display:grid;place-items:center;padding:20px}
+.modal{width:100%;max-width:430px;background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:22px;box-shadow:var(--shadow);animation:pop .16s ease-out}
+@keyframes pop{from{opacity:0;transform:translateY(8px) scale(.99)}}
+.mhead{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.mhead h3{font-size:17px;letter-spacing:-.02em}
+.mhead p{font-size:13px;color:var(--muted);margin-top:5px;line-height:1.55}
+.xbtn{width:30px;height:30px;border-radius:8px;border:0;background:transparent;color:var(--faint);cursor:pointer;font-size:15px;flex:none;line-height:1}
+.xbtn:hover{background:var(--bg-2);color:var(--text)}
+.wopt{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:12px 13px;border:1px solid var(--line);border-radius:12px;background:var(--surface);cursor:pointer;margin-top:10px;transition:.14s}
+.wopt:hover:not([disabled]){border-color:var(--line-2);background:var(--bg-2)}
+.wopt[disabled]{opacity:.55;cursor:not-allowed}
+.wic{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;font-size:13px;font-weight:650;flex:none;border:1px solid var(--line);background:var(--bg-2)}
+.wtx{min-width:0}
+.wtx b{display:block;font-size:13.5px;font-weight:560}
+.wtx span{display:block;font-size:11.8px;color:var(--faint);margin-top:1px}
+.notice{margin-top:14px;padding:11px 13px;border-radius:10px;background:var(--warn-soft);color:var(--warn);font-size:11.8px;line-height:1.6}
+.mfoot{margin-top:16px;font-size:11.5px;color:var(--faint);line-height:1.6}
+#toasts{position:fixed;right:18px;bottom:18px;z-index:200;display:grid;gap:8px;max-width:340px}
+.toast{display:flex;gap:10px;padding:12px 14px;border-radius:12px;border:1px solid var(--line);background:var(--surface);box-shadow:var(--shadow);animation:tin .18s ease-out}
+@keyframes tin{from{opacity:0;transform:translateY(7px)}}
+.toast .ti{line-height:1;color:var(--faint);margin-top:2px;flex:none}
+.toast .ti.ok{color:var(--good)}
+.toast .ti.err{color:var(--warn)}
+.toast b{display:block;font-size:13px;font-weight:600}
+.toast p{font-size:12.2px;color:var(--muted);margin-top:1px;line-height:1.5}
+.acct{position:relative}
+.menu{position:absolute;right:0;top:calc(100% + 9px);width:262px;background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);padding:7px;z-index:60}
+.menu .ad{padding:10px 11px 12px;border-bottom:1px solid var(--line);margin-bottom:6px}
+.menu .ad .who{font-size:11.5px;color:var(--faint);margin-bottom:5px}
+.menu .ad .num{font-family:var(--mono);font-size:11.5px;color:var(--muted);word-break:break-all;line-height:1.5}
+.menu .ad .bal{font-size:13px;font-weight:600;margin-top:8px}
+.menu button{display:flex;width:100%;text-align:left;padding:8px 11px;border-radius:8px;border:0;background:none;font-size:13px;color:var(--text);cursor:pointer}
+.menu button:hover{background:var(--bg-2)}
+
+.ftr{border-top:1px solid var(--line);margin-top:40px;padding:26px 0 40px}
+.frow{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--faint)}
+.frow a:hover{color:var(--text)}
+</style>
+</head>
+<body>
+
+<header class="hdr blur">
+  <div class="shell hrow">
+    <a class="brand" href="#/"><span class="mark">◈</span>VibeMusic</a>
+    <span class="badge">Base mainnet</span>
+    <nav class="nav" id="nav">
+      <a href="#/" data-nav="home">Explore</a>
+      <a href="#/agent" data-nav="agent">Agent</a>
+      <a href="#/create" data-nav="create">Create</a>
+    </nav>
+    <div class="hright">
+      <button class="iconbtn" data-act="theme" title="Toggle theme" aria-label="Toggle theme">☾</button>
+      <div id="walletArea"></div>
+    </div>
+  </div>
+</header>
+
+<main id="app" class="shell"></main>
+
+<footer class="ftr">
+  <div class="shell frow">
+    <span>Prototype — no real funds move. Built for Vibestarter Vibeathon 02.</span>
+    <span>$VIBES <span class="mono">0xefFC…1Acb</span> · Base 8453 · <a href="#/agent">agent console</a></span>
+  </div>
+</footer>
+
+<div id="modalRoot"></div>
+<div id="toasts"></div>
+
+<script>
+/* ── helpers ────────────────────────────────────────────────────────────── */
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const short = (a, n = 4) => (a ? a.slice(0, n + 2) + '…' + a.slice(-n) : '');
+const rnd = n => Array.from({ length: n }, () => '0123456789abcdef'[Math.floor(Math.random() * 16)]).join('');
+const randAddr = () => '0x' + rnd(40);
+const fakeTx = () => '0x' + rnd(64);
+const uid = p => (p || 'id') + '_' + Math.random().toString(36).slice(2, 8);
+const now = () => Date.now();
+const fmt = n => Number(n || 0).toLocaleString();
+const ago = ts => {
+  const s = Math.max(1, Math.floor((now() - ts) / 1000));
+  if (s < 60) return s + 's ago';
+  const m = Math.floor(s / 60); if (m < 60) return m + 'm ago';
+  const h = Math.floor(m / 60); if (h < 24) return h + 'h ago';
+  return Math.floor(h / 24) + 'd ago';
+};
+const dur = s => Math.floor(s / 60) + ':' + String(Math.round(s % 60)).padStart(2, '0');
+const grad = seed => {
+  let h = 0; for (const c of String(seed)) h = (h * 31 + c.charCodeAt(0)) % 360;
+  return `linear-gradient(140deg,hsl(${h} 58% 46%),hsl(${(h + 46) % 360} 54% 34%))`;
+};
+const slugify = s => String(s).toLowerCase().trim().replace(/[^a-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 24);
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const avStyle = (obj, seed) => `background:${obj.image ? `url(${esc(obj.image)})` : grad(seed)};background-size:cover;background-position:center`;
+
+/* ── storage ────────────────────────────────────────────────────────────────
+ * The prototype is often opened inside a sandboxed preview frame, where even
+ * reading localStorage throws a SecurityError. Never let that break rendering. */
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch {} },
+};
+
+/* ── theme ──────────────────────────────────────────────────────────────── */
+const THEME_KEY = 'vibemusic:theme';
+const ICON_MOON = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A8.5 8.5 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg>';
+const ICON_CHECK = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';
+const ICON_ALERT = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 8v5M12 17h.01"/><circle cx="12" cy="12" r="9"/></svg>';
+const ICON_INFO = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 11v5M12 8h.01"/><circle cx="12" cy="12" r="9"/></svg>';
+const ICON_SUN = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4"/></svg>';
+function applyTheme(t) {
+  document.documentElement.dataset.theme = t;
+  store.set(THEME_KEY, t);
+  const b = $('[data-act="theme"]');
+  if (b) {
+    b.innerHTML = t === 'dark' ? ICON_SUN : ICON_MOON;
+    b.title = t === 'dark' ? 'Switch to light' : 'Switch to dark';
+  }
+}
+
+/* ── catalogue (real Audius tracks, baked so the prototype works offline) ── */
+const CATALOGUE = [
+  { id:'AK3w5q0', title:'iLLPeTiLL - 140 Mix (Audius Exclusive)', artist:'iLLPeTiLL', handle:'iLLPeTiLL', genre:'Dubstep', mood:'Brooding', plays:1374, favs:72, dur:584, days:4, desc:'Dope Dubstep/140 Mix of all Audius Artists' },
+  { id:'Ma6qb3x', title:'Deadly Combo [DISKADE BOOTLEG]', artist:'diskadebass', handle:'diskadebass', genre:'Dubstep', mood:'Cool', plays:1300, favs:41, dur:304, days:7, desc:'bootleg edit' },
+  { id:'87GrbyW', title:'Elastic Illusions', artist:'ShrivL', handle:'shrivl', genre:'Electronic', mood:'Fiery', plays:2034, favs:43, dur:231, days:3, desc:'Bass-forward electronica from the night bus home.' },
+  { id:'r70GlbZ', title:'LOUDWERX - Bass Go Boom', artist:'LOUDWERX', handle:'loudwerx', genre:'Electronic', mood:'Fiery', plays:1323, favs:64, dur:156, days:9, desc:'club weapon' },
+  { id:'ab1djoz', title:'Space Fear - Loko (Radio Edit)', artist:'spacefear', handle:'spacefear', genre:'Tech House', mood:'Aggressive', plays:928, favs:29, dur:148, days:12, desc:'tech house radio edit' },
+  { id:'Z4MO8z6', title:'Konzyk - Chamber (FREE DL)', artist:'Konzyk', handle:'konzyk', genre:'Tech House', mood:'Cool', plays:487, favs:28, dur:419, days:21, desc:'Free download in the description. Deep, patient tech house.' },
+  { id:'ZlwB7', title:'Instrumental chill. Arly', artist:'iconoschill', handle:'iconoschill', genre:'Lo-Fi', mood:'Peaceful', plays:13348, favs:254, dur:138, days:900, desc:'chill lofi instrumental' },
+  { id:'chlv01', title:'Chill Vibes Lofi hip hop mix', artist:'Ljazz_beats', handle:'Ljazz_beats', genre:'Lo-Fi', mood:'Peaceful', plays:6415, favs:180, dur:221, days:41, desc:'A warm lo-fi loop for late nights and long study sessions.' },
+  { id:'lofarm1', title:'lofi Instrumental Hip Hop Chill Beat', artist:'lofi army', handle:'lofiarmy', genre:'Hip-Hop/Rap', mood:'Upbeat', plays:12536, favs:301, dur:164, days:88, desc:'Beats for the late shift. Made in a bedroom, mixed on headphones.' },
+  { id:'nxdvl01', title:'GET//NASTY (Final)', artist:'NXDVL', handle:'nxdvl', genre:'Dubstep', mood:'Defiant', plays:283, favs:28, dur:206, days:15, desc:'dubstep at 140, loud on purpose' },
+  { id:'blopn01', title:'Ambient Snow', artist:'Blopin', handle:'blopin', genre:'Experimental', mood:'Peaceful', plays:12692, favs:210, dur:312, days:610, desc:'Ambient textures and field recordings from a very quiet place.' },
+  { id:'comte01', title:'1999 [Indie Pop]', artist:'Comté', handle:'comte', genre:'Pop', mood:'Romantic', plays:1628, favs:66, dur:198, days:61, desc:'Indie pop with cheap synths and expensive feelings.' },
+  { id:'soul01', title:'Loving You Is So Easy', artist:'Angelina Alexon', handle:'angelina_alexon', genre:'R&B/Soul', mood:'Sensual', plays:25948, favs:410, dur:212, days:130, desc:'R&B vocals, slow burn production.' },
+  { id:'funk01', title:"Let's Groove (Funky Jazz Soul)", artist:'Collab Haven Rec', handle:'collabhavenrec', genre:'Funk', mood:'Cool', plays:8499, favs:190, dur:187, days:300, desc:'Funk, jazz and soul-leaning sample flips.' },
+];
+
+/* ── seed state ─────────────────────────────────────────────────────────── */
+const AGENT_ADDR = '0x9A7c4bE2F3f1D6b8C05aE4d2B71f3c8D9e6A0b42';
+const RELAYER_ADDR = '0x2d4F6aB0c93E17f5D8b21A4c7e60B3d9F8a1C5e7';
+
+function mkJar(slug, name, bio, handles, trackIds, total, tips) {
+  return { wallet: '0x' + rnd(40), slug, name, bio, x: slug, image: null, handles, trackIds, total, tipCount: tips, createdAt: now() - Math.floor(Math.random() * 8 + 1) * 86400000 };
+}
+function seed() {
+  const jars = [
+    mkJar('lofi_army', 'lofi army', 'Beats for the late shift, mixed on headphones.', ['lofiarmy'], ['lofarm1'], 25, 2),
+    mkJar('shrivl', 'ShrivL', 'Bass-forward electronics from the night bus home.', ['shrivl'], ['87GrbyW'], 18, 1),
+    mkJar('konzyk', 'Konzyk', 'Tech house sketches, no filler. Free downloads every drop.', ['konzyk'], ['Z4MO8z6'], 12, 1),
+    mkJar('iconoschill', 'iconoschill', 'Lo-fi loops for the 2am crowd.', ['iconoschill'], ['ZlwB7'], 0, 0),
+    mkJar('angelinaalexon', 'Angelina Alexon', 'R&B vocals, slow burn production.', ['angelina_alexon'], ['soul01'], 50, 1),
+    mkJar('blopin', 'Blopin', 'Ambient textures and field recordings.', ['blopin'], ['blopn01'], 10, 1),
+    mkJar('comte', 'Comté', 'Indie pop with cheap synths and expensive feelings.', ['comte'], ['comte01'], 12, 1),
+    mkJar('nxdvl', 'NXDVL', 'Dubstep at 140. Loud on purpose.', ['nxdvl'], ['nxdvl01'], 8, 1),
+  ];
+  const by = h => jars.find(j => j.handles.includes(h));
+  const tips = [
+    { from: AGENT_ADDR, to: by('shrivl').wallet, amount: 18, agent: true, reason: 'Electronic fits your brief · 2.0k plays with a strong like-rate · fresh drop (3 days ago) — 88/100', trackTitle: 'Elastic Illusions', ts: now() - 12 * 60000, tx: fakeTx() },
+    { from: '0x51B3c2f6E8a1D4C0b7F29e35A8d6C4b1E2f0A9d3', to: by('lofiarmy').wallet, amount: 25, agent: false, message: 'study session fuel 🙏', ts: now() - 48 * 60000, tx: fakeTx() },
+    { from: AGENT_ADDR, to: by('konzyk').wallet, amount: 12, agent: true, reason: 'hidden gem — only 487 plays · Tech House mood match · clean artwork and notes — 79/100', trackTitle: 'Konzyk - Chamber (FREE DL)', ts: now() - 3600000, tx: fakeTx() },
+    { from: '0x3F0a7D91C4b28e6A5d13F0c8B9e24a7D6c1F8b05', to: by('angelina_alexon').wallet, amount: 50, agent: false, message: 'that vocal run at 1:12 😮‍💨', ts: now() - 3 * 3600000, tx: fakeTx() },
+    { from: AGENT_ADDR, to: by('comte').wallet, amount: 12, agent: true, reason: 'Indie pop fits your brief · recent (2 months ago) · well-produced drop — 77/100', trackTitle: '1999 [Indie Pop]', ts: now() - 5 * 3600000, tx: fakeTx() },
+    { from: '0x51B3c2f6E8a1D4C0b7F29e35A8d6C4b1E2f0A9d3', to: by('blopin').wallet, amount: 10, agent: false, message: 'ambient snow on repeat', ts: now() - 26 * 3600000, tx: fakeTx() },
+    { from: AGENT_ADDR, to: by('nxdvl').wallet, amount: 8, agent: true, reason: 'hidden gem — only 283 plays · 140 BPM Dubstep in brief · solid metadata — 72/100', trackTitle: 'GET//NASTY (Final)', ts: now() - 41 * 3600000, tx: fakeTx() },
+  ].map(t => ({ ...t, id: uid('tip') }));
+
+  return {
+    wallet: null, balance: 250, customWallet: false,
+    jars, tips,
+    missions: [{
+      id: 'm_seed', prompt: 'Tip the best chill tracks right now', considered: 14, selected: 2, tipped: 2, skipped: 12, total: 30, at: now() - 14 * 60000,
+      steps: [
+        { stage: 'discover', text: 'Scanning Audius for “chill lofi”', detail: 'intent: genres Lo-Fi / Ambient · moods Peaceful / Calm' },
+        { stage: 'evaluate', text: 'Scored 14 tracks · 2 cleared 68/100', detail: 'Chill Vibes Lofi (77) · Ambient Snow (74) · lofi Instrumental (71)' },
+        { stage: 'relay', text: 'Tipped @shrivl 18 $VIBES for “Elastic Illusions”', detail: 'Electronic fits the brief · 2k plays with a strong like-rate — 88/100', tx: tips[0].tx, amount: 18 },
+        { stage: 'relay', text: 'Tipped @konzyk 12 $VIBES for “Konzyk - Chamber (FREE DL)”', detail: 'hidden gem — only 487 plays — 79/100', tx: tips[2].tx, amount: 12 },
+        { stage: 'skip', text: 'Skipped @jyye — no VibeMusic jar linked', detail: 'the artist needs to claim a jar first' },
+        { stage: 'done', text: 'Mission complete · 2 tips · 30 $VIBES', detail: 'gas sponsored by the relayer — the agent holds $VIBES only' },
+      ],
+    }],
+    agent: { address: AGENT_ADDR, relayer: RELAYER_ADDR, vibes: 1840, allowance: 100000, relayerEth: '0.0143' },
+    ui: { amount: '25', custom: '', message: '', tipPhase: 'idle', lastTx: null, openMission: null, prompt: 'Tip the best chill tracks right now', draft: null, acctOpen: false, slugTouched: false },
+  };
+}
+
+const KEY = 'vibemusic:prototype:v4';
+let S;
+try { S = JSON.parse(store.get(KEY) || 'null') || seed(); } catch { S = seed(); }
+if (!S.ui || !S.jars) S = seed();
+const persist = () => { try { store.set(KEY, JSON.stringify(S)); } catch {} };
+
+/* ── derived ────────────────────────────────────────────────────────────── */
+const trackById = id => CATALOGUE.find(t => t.id === id);
+const jarTracks = jar => jar.trackIds.map(trackById).filter(Boolean);
+const jarForHandle = h => S.jars.find(j => j.handles.some(x => x.toLowerCase() === String(h || '').toLowerCase()));
+const tipJar = id => {
+  const k = String(id || '').replace(/^@/, '').toLowerCase();
+  return S.jars.find(j => j.slug.toLowerCase() === k || j.wallet.toLowerCase() === k);
+};
+const tipsFor = w => S.tips.filter(t => t.to.toLowerCase() === String(w).toLowerCase()).sort((a, b) => b.ts - a.ts);
+const stats = () => ({
+  jars: S.jars.length,
+  tracks: S.jars.reduce((n, j) => n + j.trackIds.length, 0),
+  tips: S.tips.filter(t => !t.agent).length,
+  agentTips: S.tips.filter(t => t.agent).length,
+  moved: S.tips.reduce((n, t) => n + Number(t.amount || 0), 0),
+});
+const shortTitle = text => {
+  const m = String(text || '').match(/[“"]([^”"]+)[”"]/);
+  return m ? m[1] : String(text || '').replace(/^Tipped\s+@[\w.-]+\s+\d+\s+\$VIBES\s+for\s+/i, '');
+};
+const receiptsHTML = m => {
+  if (!m) return '';
+  return m.steps.filter(s => s.stage === 'relay').map(s => `
+    <div class="receipt">
+      <div class="rrow">
+        <div class="rtitle">${esc(shortTitle(s.text))}<span class="rhandle">${esc((s.text.match(/@([\w.-]+)/) || [])[0] || '')}</span></div>
+        <span class="amt">+${s.amount || ''} VIBES</span>
+      </div>
+      <p class="why">${esc(s.detail || '')}</p>
+    </div>`).join('');
+};
+
+/* ── agent brain (mirrors shared/scoring.ts) ────────────────────────────── */
+const GENRES = {
+  chill: ['Lo-Fi', 'Ambient', 'Downtempo', 'R&B/Soul', 'Jazz'], lofi: ['Lo-Fi', 'Ambient'],
+  electronic: ['Electronic', 'House', 'Techno', 'Tech House', 'Dubstep', 'Drum & Bass'],
+  house: ['House', 'Tech House'], bass: ['Dubstep', 'Electronic'], dubstep: ['Dubstep'],
+  'lo-fi': ['Lo-Fi', 'Ambient'], ambient: ['Ambient', 'Experimental'], pop: ['Pop', 'R&B/Soul'],
+  soul: ['R&B/Soul', 'Funk'], funk: ['Funk'], indie: ['Pop', 'Alternative'], afrobeats: ['Afrobeats', 'Dancehall'],
+};
+const MOODS = {
+  chill: ['Peaceful', 'Calm', 'Cool', 'Mellow'], calm: ['Peaceful', 'Calm'],
+  energetic: ['Fiery', 'Aggressive', 'Defiant'], dark: ['Brooding', 'Gritty'],
+  happy: ['Upbeat', 'Romantic', 'Sensual'], study: ['Peaceful', 'Calm'],
+};
+function parseIntent(prompt) {
+  const lower = String(prompt).toLowerCase();
+  const words = lower.replace(/[^a-z0-9\s-]/g, ' ').split(/\s+/).filter(Boolean);
+  const genres = [...new Set(words.flatMap(w => GENRES[w] || []))];
+  const moods = [...new Set(words.flatMap(w => MOODS[w] || []))];
+  const wantsFresh = /\b(fresh|new|recent|latest|drop)\b/.test(lower);
+  const wantsUnderrated = /\b(underrated|hidden|undiscovered|under|5k)\b/.test(lower);
+  const bits = [];
+  if (genres.length) bits.push('genres ' + genres.slice(0, 3).join(' / '));
+  if (moods.length) bits.push('moods ' + moods.slice(0, 3).join(' / '));
+  if (wantsFresh) bits.push('freshness weighted');
+  if (wantsUnderrated) bits.push('underrated boost');
+  return { prompt, genres, moods, wantsFresh, wantsUnderrated, brief: bits.join(' · ') || 'open brief — pure quality score' };
+}
+function scoreTrack(t, intent) {
+  const sig = [];
+  const base = intent.genres.length || intent.moods.length ? 22 : 30;
+  if (intent.genres.length) {
+    if (intent.genres.some(g => t.genre.toLowerCase().includes(g.toLowerCase()))) sig.push({ p: 24, note: t.genre + ' fits your brief' });
+    else sig.push({ p: -10, note: t.genre + ' is off-brief' });
+  } else sig.push({ p: 6, note: 'tagged ' + t.genre });
+  if (intent.moods.length) {
+    if (intent.moods.some(m => t.mood.toLowerCase().includes(m.toLowerCase()))) sig.push({ p: 14, note: t.mood + ' mood match' });
+  } else sig.push({ p: 5, note: t.mood + ' mood' });
+  sig.push({ p: Math.min(14, Math.round(Math.log10(t.plays + 1) * 3.4)), note: fmt(t.plays) + ' plays' });
+  const likeRate = t.plays > 20 ? t.favs / t.plays : 0;
+  if (likeRate >= 0.02) sig.push({ p: 6, note: 'strong like-rate (' + (likeRate * 100).toFixed(1) + '%)' });
+  else if (t.favs >= 25) sig.push({ p: 3, note: fmt(t.favs) + ' likes' });
+  if (t.days <= 14) sig.push({ p: intent.wantsFresh ? 10 : 8, note: 'fresh drop (' + t.days + ' days ago)' });
+  else if (t.days <= 30) sig.push({ p: 6, note: 'recent (' + t.days + ' days ago)' });
+  if (intent.wantsUnderrated && t.plays < 5000 && t.favs >= 15) sig.push({ p: 10, note: 'hidden gem — only ' + fmt(t.plays) + ' plays' });
+  const craft = 2 + (t.desc.length > 40 ? 2 : 0) + (t.dur >= 60 && t.dur <= 600 ? 3 : 0);
+  sig.push({ p: craft, note: craft >= 6 ? 'well-produced drop (art, notes, tight runtime)' : 'decent metadata' });
+  if (t.dur > 1200) sig.push({ p: -8, note: 'long runtime' });
+  const score = Math.max(0, Math.min(100, Math.round(base + sig.reduce((s, x) => s + x.p, 0))));
+  const positives = sig.filter(s => s.p > 0).sort((a, b) => b.p - a.p).slice(0, 3).map(s => s.note);
+  return { track: t, score, reason: positives.join(' · ') + ' — ' + score + '/100' };
+}
+const amountFor = score => (score >= 88 ? 25 : score >= 80 ? 18 : score >= 72 ? 12 : 8);
+
+/* ── routing ────────────────────────────────────────────────────────────── */
+const PHASES = [['Discover', 'Audius'], ['Score', '68/100 bar'], ['Match', 'jar found'], ['Sign', 'EIP-712'], ['Relay', 'gas paid']];
+let route = { name: 'home' };
+let routeKey = '';
+function readRoute() {
+  const h = (location.hash || '#/').replace(/^#/, '') || '/';
+  if (h.startsWith('/@')) return { name: 'jar', id: h.slice(2) };
+  if (h.startsWith('/tip/')) return { name: 'jar', id: h.slice(5) };
+  if (h.startsWith('/agent')) return { name: 'agent' };
+  if (h.startsWith('/create')) return { name: 'create' };
+  return { name: 'home' };
+}
+const go = h => { location.hash = h; };
+
+/* ── toasts ─────────────────────────────────────────────────────────────── */
+function toast(title, desc, tone) {
+  const el = document.createElement('div');
+  el.className = 'toast';
+  const icon = tone === 'ok' ? ICON_CHECK : tone === 'err' ? ICON_ALERT : ICON_INFO;
+  el.innerHTML = `<span class="ti ${tone || ''}">${icon}</span>
+    <div><b>${esc(title)}</b>${desc ? `<p>${esc(desc)}</p>` : ''}</div>`;
+  $('#toasts').appendChild(el);
+  setTimeout(() => {
+    el.style.transition = 'opacity .3s,transform .3s';
+    el.style.opacity = '0';
+    el.style.transform = 'translateY(8px)';
+    setTimeout(() => el.remove(), 320);
+  }, 4200);
+}
+
+/* ── wallet ─────────────────────────────────────────────────────────────── */
+function walletArea() {
+  if (!S.wallet) return `<button class="btn primary sm" data-act="connect"><span class="lbl-full">Connect wallet</span><span class="lbl-min">Connect</span></button>`;
+  return `<span class="balchip">${fmt(S.balance)} $VIBES</span>
+    <div class="acct">
+      <button class="btn sm" data-act="toggle-acct"><span class="dot"></span>${short(S.wallet, 4)}</button>
+      ${S.ui.acctOpen ? `<div class="menu">
+        <div class="ad">
+          <div class="who">Connected · Base mainnet</div>
+          <div class="num">${esc(S.wallet)}</div>
+          <div class="bal">${fmt(S.balance)} $VIBES</div>
+        </div>
+        <button data-act="copy-addr">Copy address</button>
+        <button data-act="view-basescan">View on Basescan ↗</button>
+        <button data-act="disconnect">Disconnect</button>
+      </div>` : ''}
+    </div>`;
+}
+function openWalletModal() {
+  const hasInjected = typeof window.ethereum !== 'undefined';
+  $('#modalRoot').innerHTML = `
+    <div class="modal-bg" data-act="close-modal">
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="mtitle">
+        <div class="mhead">
+          <div><h3 id="mtitle">Connect a wallet</h3><p>Your tip jar and your $VIBES balance live in a wallet on Base.</p></div>
+          <button class="xbtn" data-act="close-modal" aria-label="Close">✕</button>
+        </div>
+
+        <button class="wopt" data-act="pick-wallet" data-kind="injected" ${hasInjected ? '' : 'disabled'}>
+          <span class="wic" style="color:#e2761b">W</span>
+          <span class="wtx"><b>Browser wallet</b><span>MetaMask · Rabby · Coinbase Wallet${hasInjected ? ' — detected' : ' — not detected here'}</span></span>
+        </button>
+
+        ${hasInjected ? '' : `<div class="notice">No wallet extension is visible to this page — the preview runs inside a sandboxed frame, which blocks wallet extensions. Open <b>preview/ui-preview.html</b> in its own browser tab with MetaMask installed and this connects for real. The shipped app uses RainbowKit + wagmi on Base.</div>`}
+
+        <div class="divider"><span>or explore with a simulated wallet</span></div>
+
+        <button class="wopt" data-act="pick-wallet" data-kind="sim-meta">
+          <span class="wic" style="color:#e2761b">M</span>
+          <span class="wtx"><b>MetaMask</b><span>simulated · instant, 75 $VIBES</span></span>
+        </button>
+        <button class="wopt" data-act="pick-wallet" data-kind="sim-coin">
+          <span class="wic" style="color:#1652f0">C</span>
+          <span class="wtx"><b>Coinbase Wallet</b><span>simulated · instant, 75 $VIBES</span></span>
+        </button>
+        <button class="wopt" data-act="pick-wallet" data-kind="sim-demo">
+          <span class="wic" style="color:var(--accent)">D</span>
+          <span class="wtx"><b>Demo collector wallet</b><span>simulated · 250 $VIBES preloaded</span></span>
+        </button>
+
+        <p class="mfoot">Simulated wallets move no funds — they exist so every screen is clickable offline. Mobile wallets (WalletConnect) need a free Reown project id in the shipped app.</p>
+      </div>
+    </div>`;
+}
+const closeModal = () => { $('#modalRoot').innerHTML = ''; };
+
+async function pickWallet(kind) {
+  closeModal();
+  if (kind === 'injected') {
+    if (!window.ethereum) { toast('No wallet detected', 'Install MetaMask or open this file in a normal browser tab.', 'err'); return; }
+    try {
+      const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+      S.wallet = accounts[0];
+      S.customWallet = true;
+      S.balance = 0;
+      S.ui.acctOpen = false;
+      persist(); render();
+      toast('Wallet connected', 'Reading your $VIBES balance on Base…', 'ok');
+      try { await window.ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: '0x2105' }] }); } catch {}
+      try {
+        const data = '0x70a08231' + S.wallet.slice(2).padStart(64, '0');
+        const hex = await window.ethereum.request({ method: 'eth_call', params: [{ to: '0xefFC8815487084a97edfdfF968b56Ea123421Acb', data }, 'latest'] });
+        S.balance = Number(BigInt(hex)) / 1e18;
+        persist(); render();
+      } catch { toast('Could not read balance', 'Tip buttons still simulate the flow.', 'err'); }
+    } catch {
+      toast('Wallet connection cancelled', 'Try a simulated wallet instead.', 'err');
+    }
+    return;
+  }
+  S.wallet = randAddr();
+  S.customWallet = false;
+  S.balance = kind === 'sim-demo' ? 250 : 75;
+  S.ui.acctOpen = false;
+  persist(); render();
+  toast('Wallet connected', `${short(S.wallet, 6)} · ${fmt(S.balance)} $VIBES (simulated)`, 'ok');
+}
+function disconnect() {
+  S.wallet = null; S.customWallet = false; S.balance = 250; S.ui.amount = '25'; S.ui.custom = ''; S.ui.acctOpen = false;
+  persist(); render();
+  toast('Disconnected', 'Wallet state cleared.');
+}
+
+/* ── mission runner ─────────────────────────────────────────────────────── */
+let running = false;
+
+function stepsMarkup(done) {
+  return PHASES.map(([label, hint], i) => `
+    <li class="step${done ? ' done' : ''}" data-i="${i}">
+      <span class="sdot">${done ? '✓' : i + 1}</span>
+      <span><span class="sl">${label}</span></span>
+      <span class="sr">${hint}</span>
+    </li>`).join('');
+}
+
+async function runMission(prompt) {
+  if (running) return;
+  running = true;
+  S.ui.prompt = prompt;
+  const intent = parseIntent(prompt);
+
+  const scored = CATALOGUE.map(t => scoreTrack(t, intent)).sort((a, b) => b.score - a.score);
+  const qualifying = scored.filter(s => s.score >= 68);
+  const withJar = qualifying.filter(s => jarForHandle(s.track.handle));
+  const selection = (withJar.length ? withJar : qualifying).slice(0, 2);
+
+  const steps = [];
+  const mission = { id: uid('m'), prompt, considered: CATALOGUE.length, selected: selection.length, tipped: 0, skipped: CATALOGUE.length - selection.length, total: 0, at: now(), steps };
+
+  if (route.name !== 'home' && route.name !== 'agent') { go('#/'); await sleep(140); }
+  if (route.name === 'create') { go('#/'); await sleep(140); }
+  render();
+  await sleep(80);
+
+  const stepEls = $$('#steps .step');
+  const receiptBox = $('#receipts');
+  const stateEl = $('#paneState');
+  const hintEl = $('#phaseHint');
+  const btn = $('[data-act="run-mission"]');
+
+  steps.push({ stage: 'discover', text: `Scanning Audius for “${prompt}”`, detail: 'intent: ' + intent.brief });
+  steps.push({ stage: 'evaluate', text: `Scored ${CATALOGUE.length} tracks · ${qualifying.length} cleared 68/100`, detail: scored.slice(0, 3).map(s => `${s.track.title.slice(0, 24)} (${s.score})`).join(' · ') });
+
+  if (stateEl) stateEl.textContent = 'running';
+  if (btn) { btn.disabled = true; btn.textContent = 'Agent is working…'; }
+  if (receiptBox) receiptBox.innerHTML = `<div class="empty"><b>Agent is working</b>Reading Audius metadata, scoring tracks and signing authorizations. On-chain settlement takes a few seconds per tip.</div>`;
+
+  for (let i = 0; i < PHASES.length; i++) {
+    const el = stepEls[i];
+    if (el) { el.className = 'step active'; el.querySelector('.sdot').textContent = '◌'; }
+    if (hintEl) hintEl.textContent = `${PHASES[i][0]} — ${PHASES[i][1]}`;
+    await sleep(720);
+    if (el) { el.className = 'step done'; el.querySelector('.sdot').textContent = '✓'; }
+  }
+  if (hintEl) hintEl.textContent = 'Settling tips on Base…';
+  if (receiptBox) receiptBox.innerHTML = '';
+  if (stateEl) stateEl.textContent = 'settling';
+
+  for (const s of selection) {
+    await sleep(300);
+    const jar = jarForHandle(s.track.handle);
+    const amount = amountFor(s.score);
+    const tx = fakeTx();
+    if (!jar) {
+      steps.push({ stage: 'skip', text: `Skipped @${s.track.handle} — no VibeMusic jar linked`, detail: `“${s.track.title}” scored ${s.score}/100 but has no wallet to pay` });
+      continue;
+    }
+    steps.push({ stage: 'sign', text: `Signing EIP-712 authorization for “${s.track.title}”`, detail: `no gas, no ETH — ${amount} $VIBES authorized to @${jar.slug}` });
+    steps.push({ stage: 'relay', text: `Tipped @${jar.slug} ${amount} $VIBES for “${s.track.title}”`, detail: s.reason, tx, amount });
+
+    S.tips.unshift({ id: uid('tip'), from: S.agent.address, to: jar.wallet, amount, agent: true, reason: s.reason, trackTitle: s.track.title, ts: now(), tx });
+    jar.total = Number(jar.total || 0) + amount;
+    jar.tipCount = Number(jar.tipCount || 0) + 1;
+    S.agent.vibes -= amount;
+    mission.tipped += 1;
+    mission.total += amount;
+
+    if (receiptBox) {
+      const div = document.createElement('div');
+      div.className = 'receipt';
+      div.innerHTML = `<div class="rrow">
+          <div class="rtitle">${esc(s.track.title)}<span class="rhandle">@${esc(jar.slug)}</span></div>
+          <span class="amt">+${amount} VIBES</span>
+        </div>
+        <p class="why">${esc(s.reason)}</p>`;
+      receiptBox.appendChild(div);
+    }
+    await sleep(420);
+  }
+
+  if (!selection.length) {
+    steps.push({ stage: 'done', text: 'Nothing cleared the quality bar — the agent keeps its $VIBES', detail: `top score ${scored[0].score}/100` });
+  } else {
+    steps.push({ stage: 'done', text: `Mission complete · ${mission.tipped} tip${mission.tipped === 1 ? '' : 's'} · ${mission.total} $VIBES`, detail: 'gas sponsored by the relayer — the agent holds $VIBES only' });
+  }
+
+  S.missions.unshift(mission);
+  S.missions = S.missions.slice(0, 12);
+  persist();
+  running = false;
+  render();
+  toast(mission.tipped ? `Agent tipped ${mission.tipped} artist${mission.tipped === 1 ? '' : 's'}` : 'Mission finished with no tips',
+    mission.tipped ? `${mission.total} $VIBES · gas sponsored by the relayer` : 'Nothing cleared the 68/100 bar this time.',
+    mission.tipped ? 'ok' : '');
+}
+
+/* ── human tip flow ─────────────────────────────────────────────────────── */
+async function sendTip(jar) {
+  if (!S.wallet) { openWalletModal(); return; }
+  if (S.ui.tipPhase !== 'idle' && S.ui.tipPhase !== 'done') return;
+  const raw = S.ui.custom || S.ui.amount;
+  const amount = Number(raw);
+  if (!Number.isFinite(amount) || amount <= 0) { toast('Pick an amount first', '10, 25, 50, 100 — or type your own.', 'err'); return; }
+
+  S.ui.tipPhase = 'signing'; render();
+  await sleep(620);
+  S.ui.tipPhase = 'confirming'; render();
+  await sleep(900);
+
+  const tx = fakeTx();
+  if (!S.customWallet) S.balance = Math.max(0, S.balance - amount);
+  S.tips.unshift({ id: uid('tip'), from: S.wallet, to: jar.wallet, amount, agent: false, message: S.ui.message.trim() || null, ts: now(), tx });
+  jar.total = Number(jar.total || 0) + amount;
+  jar.tipCount = Number(jar.tipCount || 0) + 1;
+  S.ui.tipPhase = 'done'; S.ui.lastTx = tx; S.ui.message = '';
+  persist(); render();
+  toast(`Tipped ${amount} $VIBES`, S.customWallet ? 'Simulated transfer (prototype).' : `Balance now ${fmt(S.balance)} $VIBES · simulated transfer.`, 'ok');
+  setTimeout(() => { if (S.ui.tipPhase === 'done') { S.ui.tipPhase = 'idle'; if (route.name === 'jar') render(); } }, 6000);
+}
+
+/* ── publish jar ────────────────────────────────────────────────────────── */
+function ensureDraft() {
+  if (!S.ui.draft) S.ui.draft = { name: '', slug: '', bio: '', x: '', image: '', trackIds: [] };
+  return S.ui.draft;
+}
+function publishJar() {
+  const d = ensureDraft();
+  if (!S.wallet) { openWalletModal(); return; }
+  if (!d.name.trim()) { toast('Add a display name', 'Fans see this on your jar.', 'err'); return; }
+  if (!/^[a-z0-9_-]{2,24}$/.test(d.slug)) { toast('Handle must be 2–24 characters', 'a–z, 0–9, “-” or “_”.', 'err'); return; }
+  if (!d.trackIds.length) { toast('Link at least one Audius track', 'Paste a link or pick a suggestion.', 'err'); return; }
+  if (S.jars.some(j => j.slug === d.slug && j.wallet !== S.wallet)) { toast('Handle taken', 'Pick another handle.', 'err'); return; }
+
+  const tracks = d.trackIds.map(trackById).filter(Boolean);
+  const jar = {
+    wallet: S.wallet, slug: d.slug, name: d.name.trim(), bio: d.bio.trim(), x: d.x.trim().replace(/^@/, '') || null,
+    image: d.image.trim() || null, handles: [...new Set(tracks.map(t => t.handle.toLowerCase()))],
+    trackIds: [...d.trackIds], total: 0, tipCount: 0, createdAt: now(),
+  };
+  S.jars = [jar, ...S.jars.filter(j => j.wallet !== S.wallet)];
+  S.ui.draft = null; S.ui.slugTouched = false;
+  persist();
+  go('#/@' + jar.slug);
+  render();
+  toast('Tip jar published', 'Share the link — fans and the agent can tip it now.', 'ok');
+}
+
+/* ── the pass (landing hero object) ─────────────────────────────────────── */
+function barcodeHTML(seed) {
+  let h = 0;
+  for (const c of String(seed || 'vibemusic')) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  let out = '';
+  for (let i = 0; i < 46; i++) {
+    h = (h * 1103515245 + 12345) >>> 0;
+    const w = 1 + (h % 3);
+    out += `<i style="flex:0 0 ${w}px;opacity:${0.55 + ((h >>> 8) % 45) / 100}"></i>`;
+  }
+  return out;
+}
+function waveHTML(seed) {
+  let h = 0;
+  for (const c of String(seed || 'vibemusic')) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  let out = '';
+  for (let i = 0; i < 34; i++) {
+    h = (h * 1664525 + 1013904223) >>> 0;
+    const px = 7 + (h % 31);
+    out += `<i style="--h:${px}px;animation-delay:-${(i % 12) * 0.09}s"></i>`;
+  }
+  return out;
+}
+function passHTML() {
+  const mine = S.wallet ? S.jars.find(j => j.wallet === S.wallet) : null;
+  const feat = mine || S.jars.find(j => j.slug === 'shrivl') || S.jars[0];
+  const n = feat.trackIds.length;
+  const tipped = S.tips.some(t => t.to === feat.wallet && t.agent);
+  const initials = feat.name.replace(/[^A-Za-z0-9 ]/g, '').split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase() || 'VT';
+  const serial = '№ ' + String(parseInt(feat.wallet.slice(-4), 16) % 9000 + 1000);
+  const lastTip = S.tips.filter(t => t.to === feat.wallet).sort((a, b) => b.ts - a.ts)[0];
+  return `
+  <div class="stagewrap">
+    <div class="stage" id="stage">
+      <div class="pass-wrap">
+        <a class="pass" id="passCard" href="#/@${esc(feat.slug)}" aria-label="Open ${esc(feat.name)}'s tip jar">
+          <div class="pass-in">
+            <div class="pass-notch"></div>
+            <div class="pass-top"><span>${mine ? 'your pass' : 'vibemusic pass'}</span><span>Base · 8453</span></div>
+            <svg class="pass-sigil" viewBox="0 0 260 260" fill="none" stroke="currentColor" stroke-width=".7" aria-hidden="true">
+              <circle cx="130" cy="130" r="104"/><circle cx="130" cy="130" r="80"/>
+              <ellipse cx="130" cy="130" rx="104" ry="38"/><ellipse cx="130" cy="130" rx="104" ry="72"/>
+              <ellipse cx="130" cy="130" rx="38" ry="104"/><ellipse cx="130" cy="130" rx="72" ry="104"/>
+              <ellipse cx="130" cy="130" rx="104" ry="38" transform="rotate(30 130 130)"/>
+              <ellipse cx="130" cy="130" rx="104" ry="38" transform="rotate(-30 130 130)"/>
+            </svg>
+            <div class="pass-brand">vibemusic</div>
+            <div class="pass-id">
+              <div style="min-width:0">
+                <div class="pass-name">${esc(feat.name)}</div>
+                <div class="pass-meta"><span class="pill">artist</span><em>@${esc(feat.slug)}</em></div>
+              </div>
+              <div class="pass-medal"><span>${esc(initials)}</span></div>
+            </div>
+            <div class="pass-grid">
+              <div><div class="k">Access</div><div class="v">Any tip</div></div>
+              <div><div class="k">Tracks</div><div class="v">${n} linked</div></div>
+              <div><div class="k">Agent</div><div class="v${tipped ? ' ok' : ''}">${tipped ? 'Tipping ✓' : 'Pending'}</div></div>
+            </div>
+            <div class="pass-wave" aria-hidden="true">${waveHTML(feat.wallet)}</div>
+            <div class="pass-last"><span>Last tip</span><span>${lastTip ? `<b>+${lastTip.amount} $VIBES</b> · ${ago(lastTip.ts)}` : 'waiting for the first one'}</span></div>
+            <div class="pass-stub">
+              <div class="pass-bars" id="passBars">${barcodeHTML(feat.wallet)}</div>
+              <div class="pass-stubrow"><span>${serial}</span><span>admit one</span></div>
+            </div>
+          </div>
+        </a>
+      </div>
+      <div class="pass-shadow" id="passShadow"></div>
+    </div>
+    <p class="stage-hint"><span class="only-desktop">Move your cursor to tilt it · </span><a href="#/@${esc(feat.slug)}">open @${esc(feat.slug)}'s jar →</a></p>
+  </div>`;
+}
+
+/* ── views ──────────────────────────────────────────────────────────────── */
+const jarCard = j => {
+  const tracks = jarTracks(j);
+  return `<a class="jcard" href="#/@${esc(j.slug)}" data-act="open-jar" data-slug="${esc(j.slug)}">
+    <div class="jtop">
+      <span class="av" style="${avStyle(j, j.slug)}"></span>
+      <div style="min-width:0">
+        <div class="jname">${esc(j.name)}</div>
+        <div class="jhandle">@${esc(j.slug)}</div>
+      </div>
+    </div>
+    <p class="jbio">${esc(j.bio || 'No bio yet.')}</p>
+    <div class="jfoot">
+      <span>${tracks.length} track${tracks.length === 1 ? '' : 's'} · ${fmt(j.tipCount || 0)} tip${(j.tipCount || 0) === 1 ? '' : 's'}</span>
+      <span class="sum">${fmt(j.total || 0)} $VIBES</span>
+    </div>
+  </a>`;
+};
+
+function viewHome() {
+  const st = stats();
+  const last = S.missions[0];
+  return `
+  <section class="hero2">
+    <p class="eyebrow">Vibestarter Vibeathon 02 · Base mainnet</p>
+    <h1>Get tipped by humans. And by an agent with taste.</h1>
+    <p class="lede">Link up to three Audius tracks and get a public tip jar on Base. Fans tip in one click. An agent reads the same tracks, decides what is genuinely good, and pays the artist in $VIBES — while a Cloudflare Worker covers every unit of gas.</p>
+    <div class="cta">
+      <a class="btn primary lg" href="#/create">Create your tip jar</a>
+      <a class="btn lg" href="#/agent">Watch the agent tip</a>
+    </div>
+    ${passHTML()}
+    <ul class="facts">
+      <li>Gas sponsored by the relayer</li>
+      <li>EIP-712 signatures</li>
+      <li>The agent holds no ETH</li>
+    </ul>
+  </section>
+
+  <section class="stats">
+    <div class="stat"><b>${st.jars}</b><span>tip jars</span></div>
+    <div class="stat"><b>${st.tracks}</b><span>tracks linked</span></div>
+    <div class="stat"><b>${st.tips}</b><span>tips from fans</span></div>
+    <div class="stat"><b>${fmt(st.moved)}</b><span>$VIBES moved</span></div>
+  </section>
+
+  <section class="block">
+    <div class="bhead">
+      <div>
+        <h2>Agent mission</h2>
+        <p>Give the agent a brief. It discovers tracks on Audius, scores them against a 68/100 bar, and only pays the ones it can defend in plain English.</p>
+      </div>
+      <div class="side"><span class="chip good"><span class="dotg"></span>Gasless</span></div>
+    </div>
+    <div class="card">
+      <div class="runrow">
+        <input class="i" id="promptInput" data-model="prompt" value="${esc(S.ui.prompt)}" placeholder="e.g. tip underrated lo-fi artists with under 5k plays" aria-label="Mission prompt" />
+        <button class="btn primary" data-act="run-mission">Run mission</button>
+      </div>
+      <div class="presets">
+        ${['Tip the best chill tracks right now', 'Find high-quality electronic tracks and tip the artists', 'Reward underrated lo-fi artists with under 5k plays', 'Tip fresh drops from the last two weeks']
+          .map(p => `<button class="preset${S.ui.prompt === p ? ' on' : ''}" data-act="preset" data-prompt="${esc(p)}">${esc(p)}</button>`).join('')}
+      </div>
+      <ol class="steps" id="steps">${stepsMarkup(!!last && !running)}</ol>
+      <p class="phasehint" id="phaseHint">${last ? 'Last run: ' + esc(last.prompt) : 'Ready when you are.'}</p>
+      <div id="receipts">${receiptsHTML(last) || `<div class="empty"><b>No receipts yet</b>Run a mission to watch the agent think, sign and pay.</div>`}</div>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="bhead">
+      <div><h2>Tip jars</h2><p>Artists who linked Audius tracks and can be paid today.</p></div>
+      <div class="side"><a class="btn sm" href="#/create">Create yours</a></div>
+    </div>
+    <div class="jgrid">${S.jars.map(jarCard).join('')}</div>
+  </section>`;
+}
+
+function viewJar(id) {
+  const jar = tipJar(id);
+  if (!jar) return `<div class="hero"><h1>Jar not found</h1>
+    <p class="lede">No jar at <span class="mono">${esc(id)}</span>. It may have been created in a different browser — the prototype stores jars in local storage.</p>
+    <div class="cta"><a class="btn primary" href="#/">Browse tip jars</a></div></div>`;
+
+  const tracks = jarTracks(jar);
+  const tips = tipsFor(jar.wallet);
+  const phase = S.ui.tipPhase;
+  const usingCustom = !!S.ui.custom;
+  const amount = usingCustom ? S.ui.custom : S.ui.amount;
+  const busy = phase === 'signing' || phase === 'confirming';
+
+  const phaseText =
+    phase === 'signing' ? ['busy', 'Signing the tip authorization — no gas, no approval step.'] :
+    phase === 'confirming' ? ['busy', 'Confirming on Base…'] :
+    phase === 'done' ? ['ok', `Tipped ${amount} $VIBES · tx ${short(S.ui.lastTx, 6)}`] :
+    ['', S.wallet ? `Balance ${fmt(S.balance)} $VIBES` : 'Connect a wallet to tip.'];
+
+  return `
+  <a class="back" href="#/">← All tip jars</a>
+
+  <div class="profile">
+    <span class="av" style="${avStyle(jar, jar.slug)}"></span>
+    <div style="min-width:0">
+      <h1>${esc(jar.name)}</h1>
+      <div class="pmeta">
+        <span>@${esc(jar.slug)}</span>
+        ${jar.x ? `<span>· x.com/${esc(jar.x)}</span>` : ''}
+        <span class="chip good">✓ jar live</span>
+        ${tips.some(t => t.agent) ? `<span class="chip accent">Tipped by agent</span>` : ''}
+        <span class="mono faint">${short(jar.wallet, 6)}</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="jcols">
+    <div class="stack">
+      <section class="card">
+        <div class="bhead" style="margin-bottom:12px"><div><h2 style="font-size:15px">Tracks</h2></div><div class="side"><span class="chip">${tracks.length} linked</span></div></div>
+        ${tracks.map(t => `<div class="trow">
+            <span class="tart" style="${avStyle({ image: null }, t.title)}"></span>
+            <div class="tmain"><div class="ttitle">${esc(t.title)}</div>
+              <div class="tsub"><span class="tag">${esc(t.genre)}</span><span>${fmt(t.plays)} plays</span><span>${dur(t.dur)}</span></div></div>
+          </div>`).join('') || `<div class="empty">No tracks linked.</div>`}
+      </section>
+
+      <section class="card">
+        <div class="bhead" style="margin-bottom:12px"><div><h2 style="font-size:15px">Recent tips</h2></div><div class="side"><span class="chip">${fmt(jar.total || 0)} $VIBES total</span></div></div>
+        ${tips.slice(0, 8).map(t => `<div class="hrow2">
+            <span class="hav" style="${avStyle({ image: null }, t.from)}"></span>
+            <div class="hmain">
+              <div class="hline"><span class="hwho">${t.agent ? 'VibeMusic agent' : short(t.from, 4)}${t.agent ? ' <span class="chip accent" style="margin-left:4px">agent</span>' : ''}</span><span class="amt">+${t.amount} VIBES</span></div>
+              ${t.message ? `<div class="hmsg">“${esc(t.message)}”</div>` : ''}
+              ${t.reason ? `<div class="hwhy">${esc(t.reason)}</div>` : ''}
+              <div class="hwhy">${ago(t.ts)}</div>
+            </div>
+          </div>`).join('') || `<div class="empty"><b>Be the first</b>No tips yet — this jar is waiting.</div>`}
+      </section>
+    </div>
+
+    <aside class="side">
+      <div class="card">
+        <h2 style="font-size:15px">Tip @${esc(jar.slug)}</h2>
+        <div class="amounts">
+          ${['10', '25', '50', '100'].map(a => `<button class="amtbtn${!usingCustom && S.ui.amount === a ? ' on' : ''}" data-act="amount" data-amt="${a}">${a}</button>`).join('')}
+        </div>
+        <div class="field">
+          <div class="label">Custom amount <span>$VIBES</span></div>
+          <input class="i" data-model="custom" inputmode="decimal" value="${esc(S.ui.custom)}" placeholder="e.g. 42" />
+        </div>
+        <div class="field">
+          <div class="label">Message <span>optional</span></div>
+          <input class="i" data-model="message" maxlength="180" value="${esc(S.ui.message)}" placeholder="Say something nice" />
+        </div>
+        <button class="btn primary lg full" style="margin-top:16px" data-act="tip" data-wallet="${esc(jar.wallet)}" ${busy ? 'disabled' : ''}>
+          ${phase === 'signing' ? 'Waiting for signature…' : phase === 'confirming' ? 'Confirming…' : S.wallet ? `Tip ${usingCustom ? (S.ui.custom || '—') : S.ui.amount} $VIBES` : 'Connect wallet to tip'}
+        </button>
+        <div class="tipstate ${phaseText[0]}" id="tipState">${esc(phaseText[1])}</div>
+        <p class="tnote">Straight to <span class="mono">${short(jar.wallet, 4)}</span>. The relayer pays the gas, so you only ever spend $VIBES.</p>
+      </div>
+    </aside>
+  </div>`;
+}
+
+function viewAgent() {
+  const missions = S.missions.slice().sort((a, b) => b.at - a.at);
+  const last = missions[0] || null;
+  const events = missions.flatMap(m => m.steps.map((s, i) => ({ ...s, at: m.at - (m.steps.length - i) * 500 }))).slice(0, 10);
+  const today = S.tips.filter(t => t.agent && now() - t.ts < 86400000);
+
+  return `
+  <section class="hero" style="padding-bottom:26px">
+    <p class="eyebrow">Autonomous agent</p>
+    <h1 style="font-size:clamp(26px,3.2vw,34px)">Agent console</h1>
+    <p class="lede" style="font-size:15px">The agent holds $VIBES and nothing else. It signs EIP-712 tip authorizations off-chain; the Worker verifies them, calls <span class="mono">transferFrom</span> and pays the gas.</p>
+  </section>
+
+  <section class="block">
+    <div class="card tight trio">
+      <div>
+        <div class="k">Agent wallet<span class="chip good" style="margin-left:auto">0 ETH</span></div>
+        <div class="v mono">${short(S.agent.address, 6)}</div>
+        <div class="s">${fmt(S.agent.vibes)} $VIBES · ${today.length} tip${today.length === 1 ? '' : 's'} today</div>
+      </div>
+      <div>
+        <div class="k">Relayer gas tank</div>
+        <div class="v mono">${S.agent.relayerEth} ETH</div>
+        <div class="s">${short(S.agent.relayer, 6)} · pays every agent tip</div>
+      </div>
+      <div>
+        <div class="k">Spend approval</div>
+        <div class="v">Approved ✓</div>
+        <div class="s">${fmt(S.agent.allowance)} $VIBES allowance · one-time approve</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="bhead">
+      <div><h2>Live run</h2><p>Same engine as the home page, watched from the console.</p></div>
+      <div class="side"><span class="chip" id="paneState">${running ? 'running' : 'idle'}</span></div>
+    </div>
+    <div class="card">
+      <div class="runrow">
+        <input class="i" id="promptInput" data-model="prompt" value="${esc(S.ui.prompt)}" placeholder="e.g. reward underrated lo-fi artists" aria-label="Mission prompt" />
+        <button class="btn primary" data-act="run-mission">Run mission</button>
+      </div>
+      <ol class="steps" id="steps">${stepsMarkup(!!last && !running)}</ol>
+      <p class="phasehint" id="phaseHint">${last ? 'Last run: ' + esc(last.prompt) : 'Ready when you are.'}</p>
+      <div id="receipts">${receiptsHTML(last) || `<div class="empty"><b>No receipts yet</b>Run a mission to watch the agent think, sign and pay.</div>`}</div>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="bhead"><div><h2>History</h2><p>Every mission the agent has run in this browser, newest first.</p></div>
+      <div class="side"><button class="btn sm ghost" data-act="reset">Reset demo</button></div>
+    </div>
+    <div class="twocol">
+      <div class="card">
+        ${missions.map(m => `
+          <div class="mrow" data-act="toggle-mission" data-id="${m.id}">
+            <div class="p">${esc(m.prompt)}</div>
+            <div class="mm"><span>${ago(m.at)}</span><span>${m.considered} scanned</span><b>${m.tipped} tipped</b><span>${m.total} $VIBES</span></div>
+            ${S.ui.openMission === m.id ? `<div class="steps-in">${m.steps.map(s => `<div><b>${esc(s.stage)}</b>${esc(s.text)}${s.detail ? ` <i>— ${esc(s.detail)}</i>` : ''}</div>`).join('')}</div>` : ''}
+          </div>`).join('') || `<div class="empty"><b>No missions yet</b>Run one above.</div>`}
+      </div>
+      <div class="card">
+        <div class="bhead" style="margin-bottom:10px"><div><h2 style="font-size:15px">Activity</h2></div><div class="side"><span class="chip good"><span class="dotg"></span>Live</span></div></div>
+        ${events.map(e => `<div class="erow">
+            <span class="eico">${e.stage === 'relay' ? '◈' : e.stage === 'skip' ? '–' : '·'}</span>
+            <div class="etxt">${esc(e.text)}${e.detail ? `<div class="edet">${esc(e.detail)}</div>` : ''}</div>
+            <span class="etime">${ago(e.at)}</span>
+          </div>`).join('') || `<div class="empty">Nothing yet.</div>`}
+      </div>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="bhead"><div><h2>How a tip settles</h2></div></div>
+    <div class="howto">
+      ${[['01', 'Discover', 'Audius trending + search. Free, keyless, no API key.'], ['02', 'Judge', 'Deterministic 0–100 score: genre, mood, engagement, craft, freshness.'], ['03', 'Sign', 'EIP-712 TipAuthorization signed by the agent wallet. No gas, no ETH.'], ['04', 'Relay', 'The Worker verifies the signature, calls transferFrom, pays gas, stores the receipt.']]
+        .map(([n, t, d]) => `<div><div class="n">${n}</div><div class="t">${t}</div><div class="d">${d}</div></div>`).join('')}
+    </div>
+  </section>`;
+}
+
+function viewCreate() {
+  const d = ensureDraft();
+  const tracks = d.trackIds.map(trackById).filter(Boolean);
+  const suggestions = CATALOGUE.filter(t => !d.trackIds.includes(t.id)).slice(0, 4);
+  const ready = S.wallet && d.name.trim() && d.trackIds.length;
+
+  return `
+  <section class="hero" style="padding-bottom:24px">
+    <p class="eyebrow">One step</p>
+    <h1 style="font-size:clamp(26px,3.4vw,36px)">Create your tip jar</h1>
+    <p class="lede" style="font-size:15px">Link up to three Audius tracks. Your handle becomes the public URL — fans can tip it, and so can the agent.</p>
+  </section>
+
+  <div class="ccols">
+    <div class="stack">
+      <section class="card">
+        <div class="stepttl"><span class="num">1</span>Artist profile</div>
+        <div class="two">
+          <div class="field" style="margin-top:0"><div class="label">Display name</div>
+            <input class="i" data-model="draft.name" value="${esc(d.name)}" placeholder="Luna Waves" maxlength="48" /></div>
+          <div class="field" style="margin-top:0"><div class="label">Handle <span>your public url</span></div>
+            <input class="i" data-model="draft.slug" value="${esc(d.slug)}" placeholder="luna" maxlength="24" /></div>
+        </div>
+        <div class="field"><div class="label">Short bio <span>${d.bio.length}/280</span></div>
+          <textarea class="i" data-model="draft.bio" maxlength="280" placeholder="Bedroom producer making lo-fi for the 2am crowd.">${esc(d.bio)}</textarea></div>
+        <div class="two">
+          <div class="field"><div class="label">X handle <span>optional</span></div>
+            <input class="i" data-model="draft.x" value="${esc(d.x)}" placeholder="lunawaves" /></div>
+          <div class="field"><div class="label">Profile image <span>optional url</span></div>
+            <input class="i" data-model="draft.image" value="${esc(d.image)}" placeholder="https://…" /></div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="stepttl"><span class="num">2</span>Tracks <span class="faint" style="font-weight:400;font-size:12px;margin-left:auto">${d.trackIds.length}/3</span></div>
+        ${tracks.map(t => `<div class="track">
+            <span class="tart" style="${avStyle({ image: null }, t.title)}"></span>
+            <div class="tmain"><div class="ttitle">${esc(t.title)}</div><div class="tsub"><span>@${esc(t.handle)}</span><span>${esc(t.genre)}</span></div></div>
+            <button class="btn ghost sm" data-act="remove-track" data-id="${esc(t.id)}">Remove</button>
+          </div>`).join('') || `<div class="empty" style="padding:6px 0 10px;text-align:left">Nothing linked yet — paste an Audius link below.</div>`}
+        <div class="runrow" style="margin-top:14px">
+          <input class="i" id="trackInput" placeholder="Paste an audius.co track link or id" />
+          <button class="btn" data-act="add-track" ${d.trackIds.length >= 3 ? 'disabled' : ''}>Add track</button>
+        </div>
+        <div class="sugg">
+          ${suggestions.map(t => `<button data-act="add-track" data-id="${esc(t.id)}">+ ${esc(t.title)}</button>`).join('')}
+        </div>
+      </section>
+    </div>
+
+    <aside class="side">
+      <div class="card">
+        <div class="preview">
+          <div class="ptop">
+            <span class="av" id="pvAv" style="${avStyle({ image: d.image }, d.slug || d.name || 'you')}"></span>
+            <div style="min-width:0"><div id="pvName" style="font-size:15px;font-weight:600">${esc(d.name || 'Your name')}</div>
+              <div id="pvSlug" class="jhandle">@${esc(d.slug || 'handle')}</div></div>
+          </div>
+          <p id="pvBio" class="pbio">${esc(d.bio || 'Your bio appears here — tell fans what they are supporting.')}</p>
+        </div>
+        <div class="checks">
+          <div class="check${d.name.trim() ? ' ok' : ''}" id="ckName"><i>✓</i>Display name</div>
+          <div class="check${/^[a-z0-9_-]{2,24}$/.test(d.slug) ? ' ok' : ''}" id="ckSlug"><i>✓</i>Unique handle</div>
+          <div class="check${d.trackIds.length ? ' ok' : ''}" id="ckTracks"><i>✓</i>At least one Audius track</div>
+          <div class="check${S.wallet ? ' ok' : ''}" id="ckWallet"><i>✓</i>Wallet</div>
+        </div>
+        <button class="btn primary lg full" style="margin-top:16px" data-act="publish" ${ready ? '' : 'disabled'}>${S.wallet ? 'Publish tip jar' : 'Connect wallet'}</button>
+        <p class="tnote">${S.wallet ? 'Prototype: this jar is stored in your browser only.' : 'In the shipped app you sign a free message — no gas — to prove the wallet is yours. Tips arrive directly in it.'}</p>
+      </div>
+    </aside>
+  </div>`;
+}
+
+/* keep the create form's preview + checklist live without re-rendering inputs */
+function refreshDraftUI() {
+  const d = ensureDraft();
+  const set = (id, html) => { const el = document.getElementById(id); if (el) el.innerHTML = html; };
+  set('pvName', esc(d.name || 'Your name'));
+  set('pvSlug', '@' + esc(d.slug || 'handle'));
+  set('pvBio', esc(d.bio || 'Your bio appears here — tell fans what they are supporting.'));
+  const av = document.getElementById('pvAv');
+  if (av) av.setAttribute('style', avStyle({ image: d.image }, d.slug || d.name || 'you'));
+  const ck = (id, ok) => { const el = document.getElementById(id); if (el) el.classList.toggle('ok', !!ok); };
+  ck('ckName', d.name.trim());
+  ck('ckSlug', /^[a-z0-9_-]{2,24}$/.test(d.slug));
+  ck('ckTracks', d.trackIds.length);
+  ck('ckWallet', S.wallet);
+  const btn = document.querySelector('[data-act="publish"]');
+  if (btn) {
+    btn.disabled = !(S.wallet && d.name.trim() && d.trackIds.length);
+    btn.textContent = S.wallet ? 'Publish tip jar' : 'Connect wallet';
+  }
+}
+
+/* ── render ─────────────────────────────────────────────────────────────── */
+function paintChrome() {
+  $('#walletArea').innerHTML = walletArea();
+  const name = route.name === 'jar' ? 'home' : route.name;
+  $$('#nav a').forEach(a => a.classList.toggle('on', a.dataset.nav === name));
+}
+function render() {
+  route = readRoute();
+  const key = route.name + ':' + (route.id || '');
+  const app = $('#app');
+  app.innerHTML =
+    route.name === 'jar' ? viewJar(route.id) :
+    route.name === 'agent' ? viewAgent() :
+    route.name === 'create' ? viewCreate() : viewHome();
+  paintChrome();
+  if (document.getElementById('passCard')) startTilt();
+  if (key !== routeKey) {
+    routeKey = key;
+    try { window.scrollTo({ top: 0 }); } catch {}
+  }
+}
+
+/* ── events ─────────────────────────────────────────────────────────────── */
+document.addEventListener('click', e => {
+  const t = e.target.closest('[data-act]');
+  if (!t) {
+    if (S.ui.acctOpen && !e.target.closest('.acct')) { S.ui.acctOpen = false; paintChrome(); }
+    return;
+  }
+  const act = t.dataset.act;
+
+  if (act === 'close-modal') {
+    if (t.classList.contains('modal-bg') && e.target.closest('.modal')) return;
+    closeModal(); return;
+  }
+  if (act === 'theme') { applyTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'); return; }
+  if (act === 'connect') { e.preventDefault(); return openWalletModal(); }
+  if (act === 'pick-wallet') { e.preventDefault(); return pickWallet(t.dataset.kind); }
+  if (act === 'toggle-acct') { e.preventDefault(); S.ui.acctOpen = !S.ui.acctOpen; return paintChrome(); }
+  if (act === 'copy-addr') {
+    try { navigator.clipboard && navigator.clipboard.writeText(S.wallet); } catch {}
+    toast('Address copied', short(S.wallet, 6), 'ok');
+    S.ui.acctOpen = false; return paintChrome();
+  }
+  if (act === 'view-basescan') { window.open('https://basescan.org/address/' + S.wallet, '_blank', 'noopener'); return; }
+  if (act === 'disconnect') { e.preventDefault(); return disconnect(); }
+  if (act === 'open-jar') { return; }
+  if (act === 'theme-noop') { return; }
+
+  if (act === 'preset') {
+    S.ui.prompt = t.dataset.prompt; persist();
+    return render();
+  }
+  if (act === 'run-mission') {
+    const inp = $('#promptInput');
+    const text = ((inp ? inp.value : S.ui.prompt) || '').trim();
+    if (!text) { toast('Give the agent a mission', 'Pick a preset or type what it should reward.', 'err'); return; }
+    S.ui.prompt = text; persist();
+    return runMission(text);
+  }
+  if (act === 'toggle-mission') {
+    const id = t.dataset.id;
+    S.ui.openMission = S.ui.openMission === id ? null : id;
+    persist(); return render();
+  }
+  if (act === 'reset') {
+    S = seed(); persist(); go('#/'); render();
+    return toast('Demo reset', 'Back to the seeded jars and missions.');
+  }
+
+  if (act === 'amount') { S.ui.amount = t.dataset.amt; S.ui.custom = ''; S.ui.tipPhase = 'idle'; persist(); return render(); }
+  if (act === 'tip') {
+    const jar = S.jars.find(j => j.wallet === t.dataset.wallet);
+    if (jar) return sendTip(jar);
+    return;
+  }
+  if (act === 'add-track') {
+    const d = ensureDraft();
+    if (d.trackIds.length >= 3) { toast('Three tracks max', 'Keep the jar focused.', 'err'); return; }
+    const typed = t.dataset.id || ($('#trackInput') ? $('#trackInput').value : '').trim();
+    if (!typed) { toast('Paste a track first', '', 'err'); return; }
+    const found = CATALOGUE.find(x => x.id.toLowerCase() === typed.toLowerCase() || x.id === typed)
+      || CATALOGUE.find(x => typed.includes(x.id))
+      || CATALOGUE.find(x => x.title.toLowerCase().includes(typed.toLowerCase()) || x.handle.toLowerCase() === typed.toLowerCase().replace(/^@/, ''));
+    if (!found) { toast('Track not found', 'In the shipped app this hits the Audius search API.', 'err'); return; }
+    if (d.trackIds.includes(found.id)) { toast('Already linked', found.title, 'err'); return; }
+    d.trackIds.push(found.id);
+    persist(); render();
+    toast('Track linked', found.title, 'ok');
+    return;
+  }
+  if (act === 'remove-track') {
+    const d = ensureDraft();
+    d.trackIds = d.trackIds.filter(x => x !== t.dataset.id);
+    persist(); render(); return;
+  }
+  if (act === 'publish') { e.preventDefault(); return publishJar(); }
+});
+
+document.addEventListener('input', e => {
+  const el = e.target.closest('[data-model]');
+  if (!el) return;
+  const path = el.dataset.model;
+  const val = el.value;
+  if (path.startsWith('draft.')) {
+    ensureDraft()[path.slice(6)] = val;
+    if (path === 'draft.slug') S.ui.slugTouched = true;
+    if (path === 'draft.name' && !S.ui.slugTouched) {
+      ensureDraft().slug = slugify(val);
+      const sl = document.querySelector('[data-model="draft.slug"]');
+      if (sl) sl.value = ensureDraft().slug;
+    }
+    refreshDraftUI();
+  }
+  else if (path === 'custom') { S.ui.custom = val.replace(/[^\d.]/g, ''); if (S.ui.custom !== val) el.value = S.ui.custom; S.ui.tipPhase = 'idle'; }
+  else if (path === 'message') { S.ui.message = val.slice(0, 180); }
+  else if (path === 'prompt') { S.ui.prompt = val; }
+  persist();
+});
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && $('#modalRoot').innerHTML) closeModal(); });
+
+/* the landing pass tilts toward the cursor and floats when left alone */
+const reduceMotion = () => { try { return matchMedia('(prefers-reduced-motion: reduce)').matches; } catch { return false; } };
+const raf = typeof requestAnimationFrame === 'function' ? requestAnimationFrame : cb => setTimeout(() => cb(Date.now()), 16);
+let tiltRunning = false;
+/* runs only while the landing pass is on screen, so it costs nothing elsewhere */
+function startTilt() {
+  if (tiltRunning) return;
+  tiltRunning = true;
+  const step = () => {
+    const card = document.getElementById('passCard');
+    if (!card) { tiltRunning = false; return; }          // left the landing page
+    curX += (tiltX - curX) * 0.09;
+    curY += (tiltY - curY) * 0.09;
+    card.style.setProperty('--ry', (curX * 11).toFixed(2) + 'deg');
+    card.style.setProperty('--rx', (-curY * 8.5).toFixed(2) + 'deg');
+    card.style.setProperty('--mx', (50 + curX * 26).toFixed(1) + '%');
+    card.style.setProperty('--my', (50 + curY * 26).toFixed(1) + '%');
+    const sh = document.getElementById('passShadow');
+    if (sh) sh.style.transform = `translateX(-50%) translateX(${(curX * 14).toFixed(1)}px) scaleX(${(1 - Math.abs(curX) * 0.1).toFixed(3)})`;
+    raf(step);
+  };
+  raf(step);
+}
+let tiltX = 0, tiltY = 0, curX = 0, curY = 0;
+document.addEventListener('pointermove', e => {
+  const stage = document.getElementById('stage');
+  if (!stage || reduceMotion()) return;
+  const r = stage.getBoundingClientRect();
+  tiltX = Math.max(-1, Math.min(1, (e.clientX - (r.left + r.width / 2)) / (r.width / 2)));
+  tiltY = Math.max(-1, Math.min(1, (e.clientY - (r.top + r.height / 2)) / (r.height / 2)));
+}, { passive: true });
+window.addEventListener('mouseout', e => { if (!e.relatedTarget) { tiltX = 0; tiltY = 0; } });
+startTilt();
+window.addEventListener('hashchange', () => { closeModal(); S.ui.acctOpen = false; render(); });
+
+/* ── boot ───────────────────────────────────────────────────────────────── */
+applyTheme(store.get(THEME_KEY) === 'dark' ? 'dark' : 'light');
+if (!location.hash) location.replace('#/');
+render();
+</script>
+</body>
+</html>
